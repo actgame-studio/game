@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ワードソリティア：ステージ制</title>
+  <style>
+    /* =========================================
+       CSS: 基本設定とレイアウト
+       ========================================= */
+    * { box-sizing: border-box; touch-action: none; }
+    body {
+      margin: 0; padding: 0;
+      background-color: #1a365d; color: #fff;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    #game-wrapper {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    .screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: none; flex-direction: column; justify-content: center; align-items: center;
+      background-color: rgba(0, 0, 0, 0.85); z-index: 100;
+    }
+    .screen.active { display: flex; }
+
+    h1 { font-size: 2.2rem; margin-bottom: 5px; text-shadow: 2px 2px 4px #000; text-align: center; }
+    .stage-title { font-size: 1.2rem; color: #ffcc00; margin-bottom: 20px; font-weight: bold; }
+    
+    button {
+      padding: 15px 40px; font-size: 1.2rem; font-weight: bold;
+      border: none; border-radius: 30px; background-color: #ff7f50; color: white;
+      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5); margin-top: 15px; width: 80%; max-width: 300px;
+    }
+    button:active { transform: translateY(3px); box-shadow: none; }
+    .btn-secondary { background-color: #7f8c8d; }
+
+    /* =========================================
+       CSS: プレイ画面
+       ========================================= */
+    #header {
+      width: 100%; padding: 10px 15px; display: flex; justify-content: space-between;
+      background: rgba(0,0,0,0.3); font-weight: bold; font-size: 0.9rem; z-index: 10;
+    }
+    .header-item { margin: 0 5px; }
+    .text-alert { color: #ff6b6b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    #board {
+      position: relative; width: 100%; max-width: 800px; flex-grow: 1; 
+      overflow-y: auto; overflow-x: hidden;
+    }
+
+    .slot { position: absolute; border: 2px dashed rgba(255,255,255,0.3); border-radius: 8px; }
+
+    .card {
+      position: absolute; border-radius: 8px;
+      display: flex; flex-direction: column; align-items: center;
+      font-weight: bold; cursor: pointer; box-shadow: 1px 2px 5px rgba(0,0,0,0.5);
+      background-size: cover; background-position: center;
+      transition: left 0.2s ease-out, top 0.2s ease-out; overflow: visible; 
+    }
+    .card.dragging { transition: none; z-index: 1000 !important; box-shadow: 3px 6px 15px rgba(0,0,0,0.6); }
+    .card-front { background-color: #fff; color: #333; border: 1px solid #ccc; }
+    
+    .card-word {
+      position: absolute; left: 2px; right: 2px;
+      font-size: 1.1rem; text-align: center; line-height: 1.1; letter-spacing: -0.5px;
+      word-break: break-all; pointer-events: none;
+    }
+    .card-word.center { top: 50%; transform: translateY(-50%); }
+    .card-word.top { top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .card-type-category { background-color: #fffbe6; border: 3px solid #ffcc00; }
+    .card-type-category .card-word.center { font-size: 1.3rem; color: #d35400; font-weight: 900; }
+
+    .category-label {
+      position: absolute; top: -24px; left: 50%; transform: translateX(-50%);
+      background-color: #ffcc00; color: #000; padding: 2px 6px; border-radius: 4px;
+      font-size: 0.85rem; white-space: nowrap; font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 10; border: 1px solid #b38f00;
+    }
+    .card-back { background-color: #2b6cb0; border: 2px solid #fff; }
+    .fade-out { animation: fadeOut 0.5s forwards; pointer-events: none; }
+    @keyframes fadeOut { to { transform: translateY(-50px) scale(0.5); opacity: 0; } }
+
+  </style>
+</head>
+<body>
+
+  <div id="game-wrapper">
+    <div id="screen-title" class="screen active">
+      <h1>Word Solitaire</h1>
+      <div class="stage-title" id="title-stage-info"></div>
+      <p>High Score: <span id="title-hs">0</span></p>
+      <button onclick="startStage(state.currentStageIndex)">ゲームスタート</button>
+      <button class="btn-secondary" onclick="resetSaveData()" style="font-size: 0.9rem; padding: 10px 20px;">最初から遊ぶ</button>
+    </div>
+
+    <div id="header">
+      <div class="header-item" style="color:#ffcc00;" id="ui-stage">STAGE 1</div>
+      <div class="header-item">SCORE: <span id="ui-score">0</span></div>
+      <div class="header-item">MOVES: <span id="ui-moves">0</span></div>
+    </div>
+    
+    <div id="board"></div>
+
+    <div id="screen-result" class="screen">
+      <h1 id="result-msg">クリア！</h1>
+      <div class="stage-title" id="result-sub-msg"></div>
+      <p>SCORE: <span id="result-score">0</span></p>
+      <p>残り手数: <span id="result-moves">0</span></p>
+      
+      <div id="result-buttons"></div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================
+       1. STAGE_DATA: ステージデータ定義（外部化想定部分）
+       ※将来的に fetch('stages.json') などで読み込む前提の構造です
+       ========================================= */
+    const STAGE_DATA = [
+      {
+        id: 1,
+        title: "チュートリアル（基本の4枠）",
+        // moves: 50, // 手数を固定したい場合はここに数値を記述（なければ自動計算）
+        categories: [
+          { id: 'c1', name: '動物', color: '#ff6b6b' },
+          { id: 'c2', name: '色', color: '#4ecdc4' },
+          { id: 'c3', name: '果物', color: '#f39c12' },
+          { id: 'c4', name: '文具', color: '#8e44ad' }
+        ],
+        words: {
+          c1: ['犬', '猫', '熊'],
+          c2: ['赤', '青', '緑'],
+          c3: ['りんご', 'みかん', 'ぶどう'],
+          c4: ['鉛筆', '消しゴム', '定規']
+        }
+      },
+      {
+        id: 2,
+        title: "少し難しめ（6カテゴリ）",
+        categories: [
+          { id: 'n1', name: '自然', color: '#27ae60' },
+          { id: 'n2', name: '天気', color: '#2980b9' },
+          { id: 'n3', name: '楽器', color: '#c0392b' },
+          { id: 'n4', name: '乗物', color: '#d35400' },
+          { id: 'n5', name: 'スポーツ', color: '#16a085' },
+          { id: 'n6', name: '家具', color: '#8b4513' }
+        ],
+        words: {
+          n1: ['海', '山', '川', '森'],
+          n2: ['晴れ', '雨', '曇り', '雪'],
+          n3: ['ピアノ', 'ギター', '太鼓', '笛'],
+          n4: ['車', '電車', '船', '飛行機'],
+          n5: ['野球', 'サッカー', 'テニス', '水泳'],
+          n6: ['机', '椅子', 'ベッド', '本棚']
+        }
+      },
+      {
+        id: 3,
+        title: "エンタメ編（8カテゴリ・激ムズ）",
+        categories: [
+          { id: 'e1', name: '🎬ジブリ', color: '#27ae60' },
+          { id: 'e2', name: '⚔️DQ呪文', color: '#2980b9' },
+          { id: 'e3', name: '📖ジャンプ', color: '#c0392b' },
+          { id: 'e4', name: '🎤M-1王者', color: '#f39c12' },
+          { id: 'e5', name: '🍄任天堂', color: '#d35400' },
+          { id: 'e6', name: '🦸‍♂️特撮', color: '#8e44ad' },
+          { id: 'e7', name: '📺朝ドラ', color: '#16a085' },
+          { id: 'e8', name: '🤖ガンダム', color: '#2c3e50' }
+        ],
+        words: {
+          e1: ['トトロ', '千と千尋', 'もののけ姫', 'ハウル'],
+          e2: ['ホイミ', 'メラ', 'ギラ', 'ルーラ'],
+          e3: ['ワンピ', 'ナルト', 'ドラゴンB', '呪術廻戦'],
+          e4: ['中川家', 'サンド', 'チュート', '霜降り'],
+          e5: ['マリオ', 'ゼルダ', 'カービィ', 'ポケモン'],
+          e6: ['ウルトラ', 'ライダー', 'スーパー戦隊', 'ゴジラ'],
+          e7: ['あまちゃん', 'まんぷく', '虎に翼', 'らんまん'],
+          e8: ['初代', 'Z', 'ZZ', '逆襲のシャア']
+        }
+      }
+    ];
+
+    /* =========================================
+       2. 状態管理
+       ========================================= */
+    let state = {
+      currentStageIndex: parseInt(localStorage.getItem('wordSoliStage')) || 0,
+      score: parseInt(localStorage.getItem('wordSoliScore')) || 0,
+      highScore: parseInt(localStorage.getItem('wordSoliHS4')) || 0,
+      
+      movesLeft: 0,
+      clearedCategories: 0,
+      isGameOver: false,
+      
+      cards: {}, deck: [], waste: [], foundations: [[], [], [], []], tableaus: [[], [], [], []],
+      drag: { active: false, cardIds: [], source: null, offsetX: 0, offsetY: 0 }
+    };
+
+    const boardEl = document.getElementById('board');
+
+    /* =========================================
+       3. 初期化・データセーブ
+       ========================================= */
+    function initTitle() {
+      // 全クリしている場合は最初から
+      if (state.currentStageIndex >= STAGE_DATA.length) {
+        state.currentStageIndex = 0;
+        state.score = 0;
+      }
+      
+      const stageData = STAGE_DATA[state.currentStageIndex];
+      document.getElementById('title-stage-info').innerText = `STAGE ${stageData.id} : ${stageData.title}`;
+      document.getElementById('title-hs').innerText = state.highScore;
+    }
+
+    function resetSaveData() {
+      if(confirm("進行状況とスコアをリセットして最初から遊びますか？")) {
+        localStorage.removeItem('wordSoliStage');
+        localStorage.removeItem('wordSoliScore');
+        state.currentStageIndex = 0;
+        state.score = 0;
+        initTitle();
+      }
+    }
+
+    function saveProgress() {
+      localStorage.setItem('wordSoliStage', state.currentStageIndex);
+      localStorage.setItem('wordSoliScore', state.score);
+      if (state.score > state.highScore) {
+        state.highScore = state.score;
+        localStorage.setItem('wordSoliHS4', state.highScore);
+      }
+    }
+
+    /* =========================================
+       4. ステージ開始処理
+       ========================================= */
+    function startStage(stageIndex) {
+      document.getElementById('screen-title').classList.remove('active');
+      document.getElementById('screen-result').classList.remove('active');
+      
+      const stageData = STAGE_DATA[stageIndex];
+      document.getElementById('ui-stage').innerText = `STAGE ${stageData.id}`;
+      
+      state.clearedCategories = 0;
+      state.isGameOver = false;
+      boardEl.innerHTML = '';
+      state.cards = {}; state.deck = []; state.waste = [];
+      state.foundations = [[], [], [], []]; state.tableaus = [[], [], [], []];
+
+      let deckIds = [];
+      stageData.categories.forEach(cat => {
+        const wordCount = stageData.words[cat.id].length;
+        const catCardId = `c_${cat.id}`;
+        state.cards[catCardId] = { id: catCardId, type: 'category', catId: cat.id, catName: cat.name, wordCount: wordCount, faceUp: false };
+        deckIds.push(catCardId);
+
+        stageData.words[cat.id].forEach((word, index) => {
+          const wordCardId = `w_${cat.id}_${index}`;
+          state.cards[wordCardId] = { id: wordCardId, type: 'word', catId: cat.id, word: word, faceUp: false };
+          deckIds.push(wordCardId);
+        });
+      });
+
+      for (let i = deckIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deckIds[i], deckIds[j]] = [deckIds[j], deckIds[i]];
+      }
+
+      createBoardSlots();
+      Object.values(state.cards).forEach(card => createCardDOM(card));
+
+      // 場札に配る (4列固定 = 計10枚)
+      let dealIndex = 0;
+      for (let col = 0; col < 4; col++) {
+        for (let row = 0; row <= col; row++) {
+          if (dealIndex < deckIds.length) {
+            const cardId = deckIds[dealIndex++];
+            state.tableaus[col].push(cardId);
+            if (row === col) state.cards[cardId].faceUp = true;
+          }
+        }
+      }
+      while (dealIndex < deckIds.length) {
+        state.deck.push(deckIds[dealIndex++]);
+      }
+
+      // 手数計算： (ステージデータにmovesがあれば優先、なければ自動計算)
+      if (stageData.moves) {
+        state.movesLeft = stageData.moves;
+      } else {
+        const deckCount = state.deck.length;
+        const tableauCount = 10;
+        state.movesLeft = Math.floor(((deckCount * 2) + (tableauCount * 2)) * 1.3);
+      }
+
+      updateUI();
+      render();
+    }
+
+    /* 以下、描画・レイアウト・操作ロジックは前回と同様 */
+    function createBoardSlots() {
+      const { cw, ch, gap, startX, row0, row1, row2 } = getLayout();
+      const makeSlot = (x, y) => {
+        const el = document.createElement('div'); el.className = 'slot';
+        el.style.width = cw + 'px'; el.style.height = ch + 'px';
+        el.style.left = x + 'px'; el.style.top = y + 'px'; boardEl.appendChild(el);
+      };
+      makeSlot(startX, row0);
+      for (let i = 0; i < 4; i++) makeSlot(startX + i * (cw + gap), row1);
+      for (let i = 0; i < 4; i++) makeSlot(startX + i * (cw + gap), row2);
+    }
+
+    function createCardDOM(card) {
+      const el = document.createElement('div');
+      el.id = card.id; el.className = 'card card-back';
+      boardEl.appendChild(el);
+    }
+
+    function getLayout() {
+      const w = boardEl.clientWidth;
+      const cw = Math.min(w * 0.21, 100); 
+      const ch = cw * 1.4; const gap = cw * 0.08;
+      const startX = (w - (cw * 4 + gap * 3)) / 2;
+      const row0 = 15; const row1 = row0 + ch + 35; const row2 = row1 + ch + 20;
+      return { cw, ch, gap, startX, row0, row1, row2 };
+    }
+
+    function render() {
+      const { cw, ch, gap, startX, row0, row1, row2 } = getLayout();
+      const updateEl = (id, x, y, zIndex, faceUp, isTopmost) => {
+        const el = document.getElementById(id);
+        if (!el || el.classList.contains('dragging') || el.style.display === 'none') return;
+        
+        el.style.width = cw + 'px'; el.style.height = ch + 'px';
+        el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.zIndex = zIndex;
+        const card = state.cards[id];
+        if (faceUp) {
+          el.className = `card card-front ${card.type === 'category' ? 'card-type-category' : ''}`;
+          const positionClass = isTopmost ? 'center' : 'top';
+          if (card.type === 'category') {
+            let progress = 0;
+            for (let i = 0; i < 4; i++) { if (state.foundations[i][0] === id) { progress = state.foundations[i].length - 1; break; } }
+            el.innerHTML = `<div class="category-label">${card.catName} (${progress}/${card.wordCount})</div><div class="card-word center">${card.catName}</div>`;
+          } else {
+            el.innerHTML = `<div class="card-word ${positionClass}">${card.word}</div>`;
+          }
+        } else {
+          el.className = 'card card-back'; el.innerHTML = ''; 
+        }
+      };
+
+      state.deck.forEach((id, idx) => updateEl(id, startX, row0, idx, false, true));
+      state.waste.forEach((id, idx) => updateEl(id, startX + cw + gap + (Math.min(idx, 2) * 15), row0, idx, true, true));
+      
+      state.foundations.forEach((pile, fIdx) => {
+        pile.forEach((id, idx) => updateEl(id, startX + fIdx * (cw + gap), row1, idx, true, (idx === pile.length - 1)));
+      });
+
+      const yOffsetDown = ch * 0.15; const yOffsetUp = ch * 0.25;
+      state.tableaus.forEach((colIds, cIdx) => {
+        let currentY = row2;
+        colIds.forEach((id, idx) => {
+          const isFaceUp = state.cards[id].faceUp;
+          updateEl(id, startX + cIdx * (cw + gap), currentY, idx, isFaceUp, (idx === colIds.length - 1));
+          currentY += isFaceUp ? yOffsetUp : yOffsetDown;
+        });
+      });
+    }
+
+    window.addEventListener('resize', render);
+
+    function updateUI() {
+      document.getElementById('ui-score').innerText = state.score;
+      const movesEl = document.getElementById('ui-moves');
+      movesEl.innerText = state.movesLeft;
+      if (state.movesLeft <= 10) movesEl.classList.add('text-alert'); else movesEl.classList.remove('text-alert');
+    }
+
+    function decrementMove() {
+      if (state.isGameOver) return;
+      state.movesLeft--; updateUI();
+      if (state.movesLeft <= 0) endGame(false);
+    }
+
+    function drawStock() {
+      if (state.isGameOver) return;
+      if (state.deck.length > 0) {
+        const id = state.deck.pop(); state.cards[id].faceUp = true; state.waste.push(id);
+      } else if (state.waste.length > 0) {
+        while(state.waste.length > 0) { const id = state.waste.pop(); state.cards[id].faceUp = false; state.deck.push(id); }
+      } else { return; }
+      decrementMove(); render();
+    }
+
+    function findCardLocation(cardId) {
+      if (state.deck.includes(cardId)) return { zone: 'deck' };
+      if (state.waste.includes(cardId)) return { zone: 'waste' };
+      for (let i = 0; i < 4; i++) if (state.foundations[i].includes(cardId)) return { zone: 'foundation', col: i };
+      for (let i = 0; i < 4; i++) { const idx = state.tableaus[i].indexOf(cardId); if (idx !== -1) return { zone: 'tableau', col: i, row: idx }; }
+      return null;
+    }
+
+    function getValidDragStack(colIndex, rowIndex) {
+      const colIds = state.tableaus[colIndex]; const dragIds = [];
+      for (let i = rowIndex; i < colIds.length; i++) {
+        const currentId = colIds[i]; const currentCard = state.cards[currentId];
+        if (!currentCard.faceUp) return null; 
+        if (i > rowIndex) {
+          const prevId = colIds[i - 1]; const prevCard = state.cards[prevId];
+          if (currentCard.catId !== prevCard.catId || prevCard.type === 'category') return null; 
+        }
+        dragIds.push(currentId);
+      }
+      return dragIds;
+    }
+
+    function isValidMove(draggedCardIds, targetZone, targetCol) {
+      const dragCard = state.cards[draggedCardIds[0]]; 
+      if (targetZone === 'foundation') {
+        const pile = state.foundations[targetCol];
+        if (pile.length === 0) return dragCard.type === 'category';
+        const topCard = state.cards[pile[pile.length - 1]];
+        return dragCard.type === 'word' && dragCard.catId === topCard.catId;
+      }
+      if (targetZone === 'tableau') {
+        const colIds = state.tableaus[targetCol];
+        if (colIds.length === 0) return true; 
+        const topCard = state.cards[colIds[colIds.length - 1]];
+        if (topCard.type === 'category') return false; 
+        return dragCard.type === 'word' && dragCard.catId === topCard.catId;
+      }
+      return false;
+    }
+
+    function executeMove(draggedCardIds, sourceLoc, targetZone, targetCol) {
+      if (sourceLoc.zone === 'waste') state.waste.pop();
+      else if (sourceLoc.zone === 'foundation') state.foundations[sourceLoc.col].splice(sourceLoc.row, draggedCardIds.length);
+      else if (sourceLoc.zone === 'tableau') {
+        state.tableaus[sourceLoc.col].splice(sourceLoc.row, draggedCardIds.length);
+        const remainCol = state.tableaus[sourceLoc.col];
+        if (remainCol.length > 0) {
+          const newTopId = remainCol[remainCol.length - 1];
+          if (!state.cards[newTopId].faceUp) { state.cards[newTopId].faceUp = true; state.score += 10; }
+        }
+      }
+      if (targetZone === 'foundation') { state.foundations[targetCol].push(...draggedCardIds); state.score += 50; }
+      else if (targetZone === 'tableau') { state.tableaus[targetCol].push(...draggedCardIds); }
+      decrementMove(); checkCompletion(); 
+    }
+
+    function checkCompletion() {
+      for (let i = 0; i < 4; i++) {
+        const pile = state.foundations[i];
+        if (pile.length > 0) {
+          const bottomCard = state.cards[pile[0]];
+          if (bottomCard.type === 'category' && pile.length === bottomCard.wordCount + 1) {
+            state.score += 500; state.clearedCategories++;
+            pile.forEach(id => { const el = document.getElementById(id); if (el) { el.classList.add('fade-out'); setTimeout(() => el.style.display = 'none', 500); } });
+            state.foundations[i] = []; 
+          }
+        }
+      }
+      if (state.clearedCategories === STAGE_DATA[state.currentStageIndex].categories.length) endGame(true);
+    }
+
+    function endGame(isClear) {
+      if (state.isGameOver) return;
+      state.isGameOver = true;
+      const btnArea = document.getElementById('result-buttons');
+      btnArea.innerHTML = ''; // ボタンリセット
+
+      if (isClear) {
+        state.score += state.movesLeft * 10;
+        document.getElementById('result-msg').innerText = 'STAGE CLEAR!';
+        
+        state.currentStageIndex++;
+        saveProgress();
+
+        if (state.currentStageIndex < STAGE_DATA.length) {
+          document.getElementById('result-sub-msg').innerText = "次のステージがアンロックされました！";
+          btnArea.innerHTML = `<button onclick="startStage(state.currentStageIndex)">次のステージへ</button>`;
+        } else {
+          document.getElementById('result-sub-msg').innerText = "おめでとう！全ステージクリア！";
+          btnArea.innerHTML = `<button onclick="resetSaveData()">タイトルに戻る</button>`;
+        }
+      } else {
+        document.getElementById('result-msg').innerText = 'GAME OVER';
+        document.getElementById('result-sub-msg').innerText = '手数が尽きました...';
+        btnArea.innerHTML = `<button onclick="startStage(state.currentStageIndex)">リトライ</button>
+                             <button class="btn-secondary" onclick="location.reload()">タイトルに戻る</button>`;
+      }
+
+      document.getElementById('result-score').innerText = state.score;
+      document.getElementById('result-moves').innerText = state.movesLeft;
+      setTimeout(() => document.getElementById('screen-result').classList.add('active'), 1000);
+    }
+
+    document.addEventListener('pointerdown', e => {
+      if (state.isGameOver) return;
+      if (e.target.tagName !== 'BUTTON') e.preventDefault();
+      const cardEl = e.target.closest('.card');
+      const { cw, ch, startX, row0 } = getLayout();
+
+      if (!cardEl) {
+        if (e.clientX >= startX && e.clientX <= startX + cw && e.clientY >= row0 && e.clientY <= row0 + ch) drawStock();
+        return;
+      }
+      const cardId = cardEl.id; const loc = findCardLocation(cardId); if (!loc) return;
+      if (loc.zone === 'deck') { drawStock(); return; }
+
+      const cardData = state.cards[cardId]; if (!cardData.faceUp) return; 
+      let dragIds = [cardId];
+      if (loc.zone === 'tableau') { dragIds = getValidDragStack(loc.col, loc.row); if (!dragIds) return; }
+      else if (loc.zone === 'waste') { if (state.waste[state.waste.length - 1] !== cardId) return; }
+      else if (loc.zone === 'foundation') { if (state.foundations[loc.col][state.foundations[loc.col].length - 1] !== cardId) return; }
+
+      state.drag = { active: true, cardIds: dragIds, sourceLoc: loc, offsetX: e.clientX - cardEl.getBoundingClientRect().left, offsetY: e.clientY - cardEl.getBoundingClientRect().top };
+      dragIds.forEach(id => document.getElementById(id).classList.add('dragging'));
+      moveDraggedCards(e.clientX, e.clientY);
+    }, { passive: false });
+
+    document.addEventListener('pointermove', e => {
+      if (!state.drag.active) return;
+      e.preventDefault(); moveDraggedCards(e.clientX, e.clientY);
+    }, { passive: false });
+
+    document.addEventListener('pointerup', e => {
+      if (!state.drag.active) return;
+      state.drag.active = false;
+      const { cw, ch, gap, startX, row1, row2 } = getLayout();
+      const dropX = e.clientX; const dropY = e.clientY;
+      let targetZone = null; let targetCol = -1;
+
+      if (dropY >= row1 - 20 && dropY < row2 - 10) {
+        for (let i = 0; i < 4; i++) { const fx = startX + i * (cw + gap); if (dropX >= fx - gap && dropX <= fx + cw + gap) { targetZone = 'foundation'; targetCol = i; break; } }
+      } else if (dropY >= row2 - 10) {
+        for (let i = 0; i < 4; i++) { const tx = startX + i * (cw + gap); if (dropX >= tx - gap/2 && dropX <= tx + cw + gap/2) { targetZone = 'tableau'; targetCol = i; break; } }
+      }
+
+      if (targetZone !== null && targetCol !== -1 && isValidMove(state.drag.cardIds, targetZone, targetCol)) {
+        executeMove(state.drag.cardIds, state.drag.sourceLoc, targetZone, targetCol);
+      }
+      state.drag.cardIds.forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('dragging'); });
+      render();
+    });
+
+    function moveDraggedCards(x, y) {
+      const yOffsetUp = getLayout().ch * 0.25;
+      state.drag.cardIds.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if(el) { el.style.left = (x - state.drag.offsetX) + 'px'; el.style.top = (y - state.drag.offsetY + (index * yOffsetUp)) + 'px'; el.style.zIndex = 1000 + index; }
+      });
+    }
+
+    initTitle();
+  </script>
+</body>
+</html>
