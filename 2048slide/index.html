@@ -23,8 +23,8 @@
             font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', Arial, sans-serif;
             display: flex; 
             justify-content: center; 
-            align-items: flex-start; /* 画面上部を基準に配置 */
-            min-height: 100vh;       /* スマホで見切れたらスクロール可能に */
+            align-items: flex-start; 
+            min-height: 100vh;       
             overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
@@ -35,7 +35,7 @@
             display: flex; 
             flex-direction: column; 
             align-items: center;
-            padding: 5vh 10px 20px; /* 上部に少し余白、下部にも余白を確保 */
+            padding: 5vh 10px 20px; 
         }
 
         .screen {
@@ -88,7 +88,7 @@
         }
 
         canvas { 
-            width: 100% !important; /* CSSで画面幅に合わせて自動縮小 */
+            width: 100% !important; 
             height: auto !important; 
             display: block; 
             border-radius: 16px; 
@@ -226,6 +226,13 @@ function playSound(type) {
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
         osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'ice_break') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 }
 
@@ -257,7 +264,6 @@ function bindEvents() {
     
     function getGridCoords(clientX, clientY) {
         let rect = canvas.getBoundingClientRect();
-        // CSSで縮小されても正しい座標を取れるようにスケールを計算
         let scaleX = canvas.width / rect.width; 
         let scaleY = canvas.height / rect.height;
         return { px: (clientX - rect.left) * scaleX, py: (clientY - rect.top) * scaleY };
@@ -315,28 +321,40 @@ function startGame() {
         while(!placed && attempts < 5000) {
             let gx = Math.floor(Math.random() * (CONFIG.gridSizeX - w + 1));
             let gy = Math.floor(Math.random() * (CONFIG.gridSizeY - h + 1));
-            if(canPlace(gx, gy, w, h, null)) { addTile(gx, gy, val); placed = true; }
+            if(canPlace(gx, gy, w, h, null)) { addTile(gx, gy, val, false); placed = true; }
             attempts++;
         }
     });
+
+    let smallTiles = state.tiles.filter(t => t.val <= 32);
+    smallTiles.sort(() => Math.random() - 0.5).slice(0, 3).forEach(t => {
+        t.isIce = true;
+    });
+
     switchScreen('game-screen');
 }
 
-function addTile(gx, gy, val) {
+function addTile(gx, gy, val, isIce = false) {
     let w = CONFIG.sizeMap[val].w; let h = CONFIG.sizeMap[val].h;
     let px = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap);
     let py = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap);
-    state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, w, h, shakeTimer: 0 });
+    state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, w, h, shakeTimer: 0, isIce: isIce });
 }
 
-function createParticles(gx, gy, w, h, val) {
+function createParticles(gx, gy, w, h, val, isIceBreak = false) {
     let centerX = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap) + (w * CONFIG.cellSize + (w - 1) * CONFIG.gap) / 2;
     let centerY = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap) + (h * CONFIG.cellSize + (h - 1) * CONFIG.gap) / 2;
     let tileColor = CONFIG.colors[val] || "#ffffff";
 
-    for (let i = 0; i < 20; i++) {
+    let particleCount = isIceBreak ? 30 : 20;
+
+    for (let i = 0; i < particleCount; i++) {
         let angle = Math.random() * Math.PI * 2; 
-        let speed = Math.random() * 4 + 2; 
+        let speed = (Math.random() * 4 + 2) * (isIceBreak ? 1.5 : 1); 
+        
+        let pColor = Math.random() > 0.5 ? tileColor : "#ffffff";
+        if (isIceBreak && Math.random() > 0.5) pColor = "#e0f7fa"; 
+
         state.particles.push({
             x: centerX,
             y: centerY,
@@ -345,7 +363,7 @@ function createParticles(gx, gy, w, h, val) {
             life: 1.0, 
             decay: Math.random() * 0.03 + 0.02, 
             size: Math.random() * 5 + 3, 
-            color: Math.random() > 0.5 ? tileColor : "#ffffff" 
+            color: pColor 
         });
     }
 }
@@ -364,7 +382,14 @@ function handleSelect(px, py) {
     let gx = Math.floor(px / (CONFIG.cellSize + CONFIG.gap));
     let gy = Math.floor(py / (CONFIG.cellSize + CONFIG.gap));
     let clickedTile = state.tiles.find(t => gx >= t.gx && gx < t.gx + t.w && gy >= t.gy && gy < t.gy + t.h);
-    state.selectedId = clickedTile ? clickedTile.id : null;
+    
+    if (clickedTile && clickedTile.isIce) {
+        playSound('error');
+        clickedTile.shakeTimer = 15; 
+        state.selectedId = null;
+    } else {
+        state.selectedId = clickedTile ? clickedTile.id : null;
+    }
 }
 
 function handleSwipe(startX, startY, endX, endY) {
@@ -381,7 +406,7 @@ function processMove(tileId, dx, dy) {
     if(state.moves <= 0) return; 
 
     let tile = state.tiles.find(t => t.id === tileId);
-    if(!tile) return;
+    if(!tile || tile.isIce) return; 
 
     let currentGx = tile.gx; let currentGy = tile.gy;
     let targetGx = currentGx; let targetGy = currentGy;
@@ -457,16 +482,19 @@ function processMove(tileId, dx, dy) {
         state.moves--; 
         
         if(willMerge) {
-            playSound('merge'); 
+            let isIceBreak = hitTile.isIce; 
+            playSound(isIceBreak ? 'ice_break' : 'merge'); 
+            
             let newVal = tile.val * 2; state.score += newVal;
             state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== hitTile.id);
             let fGx = hitTile.finalGx !== undefined ? hitTile.finalGx : hitTile.gx;
             let fGy = hitTile.finalGy !== undefined ? hitTile.finalGy : hitTile.gy;
-            addTile(fGx, fGy, newVal);
+            
+            addTile(fGx, fGy, newVal, false);
             
             let newW = CONFIG.sizeMap[newVal].w;
             let newH = CONFIG.sizeMap[newVal].h;
-            createParticles(fGx, fGy, newW, newH, newVal);
+            createParticles(fGx, fGy, newW, newH, newVal, isIceBreak);
 
             state.selectedId = state.tiles[state.tiles.length - 1].id;
             if(newVal === CONFIG.targetValue) endGame(true);
@@ -482,6 +510,7 @@ function checkGameOver() {
     if (state.moves <= 0) { endGame(false); return; }
     let canMoveAny = false;
     for(let t of state.tiles) {
+        if(t.isIce) continue; 
         for(let dir of [[0,-1], [0,1], [-1,0], [1,0]]) {
             let tgx = t.gx + dir[0], tgy = t.gy + dir[1];
             if(tgx >= 0 && tgy >= 0 && tgx + t.w <= CONFIG.gridSizeX && tgy + t.h <= CONFIG.gridSizeY) {
@@ -540,6 +569,42 @@ function renderLoop() {
         let radius = (tile.w > 1 || tile.h > 1) ? 20 : 12;
 
         drawRoundedRect(ctx, renderPx, tile.py, drawSizeW, drawSizeH, radius, bgColor, true);
+
+        // 【パターンA】氷の質感追加：半透明オーバーレイとひび割れ、霜の枠線
+        if (tile.isIce) {
+            ctx.save();
+            
+            // 1. 青白い半透明のオーバーレイ
+            ctx.fillStyle = "rgba(173, 216, 230, 0.55)"; 
+            drawRoundedRectPath(ctx, renderPx, tile.py, drawSizeW, drawSizeH, radius);
+            ctx.fill();
+
+            // 2. ひび割れ模様（タイルサイズに合わせて相対的に描画）
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            
+            // ひび割れ線1（左上から中央）
+            ctx.moveTo(renderPx + radius, tile.py + radius);
+            ctx.lineTo(renderPx + drawSizeW * 0.3, tile.py + drawSizeH * 0.4);
+            ctx.lineTo(renderPx + drawSizeW * 0.5, tile.py + drawSizeH * 0.35);
+            
+            // ひび割れ線2（右下から中央下）
+            ctx.moveTo(renderPx + drawSizeW - radius, tile.py + drawSizeH - radius);
+            ctx.lineTo(renderPx + drawSizeW * 0.7, tile.py + drawSizeH * 0.6);
+            ctx.lineTo(renderPx + drawSizeW * 0.4, tile.py + drawSizeH * 0.8);
+            ctx.stroke();
+
+            // 3. 太くて白い霜の枠線
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 4;
+            drawRoundedRectPath(ctx, renderPx, tile.py, drawSizeW, drawSizeH, radius);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
 
         ctx.fillStyle = (tile.val <= 64) ? CONFIG.colors.textDark : CONFIG.colors.textLight;
         let minSide = Math.min(tile.w, tile.h);
