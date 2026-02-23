@@ -34,9 +34,10 @@
         #app-container {
             width: 100%;
             height: 100%;
-            display: flex;
-            flex-direction: column;
             position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .screen {
@@ -49,12 +50,22 @@
             background-color: var(--bg-color);
             z-index: 10;
         }
-        .screen.active { display: flex; }
+        .screen.active {
+            display: flex;
+        }
 
-        h1 { font-size: 2.5rem; margin-bottom: 10px; text-align: center; }
-        .score-box { background: var(--board-bg); color: white; padding: 10px 20px; border-radius: 6px; font-weight: bold; text-align: center; margin-bottom: 20px;}
-        .score-label { font-size: 0.8rem; text-transform: uppercase; }
-        .score-value { font-size: 1.5rem; }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; text-align: center; }
+        
+        .score-box { 
+            background: var(--board-bg); 
+            color: white; 
+            padding: 8px 15px; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        .score-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;}
+        .score-value { font-size: 1.4rem; line-height: 1.2;}
 
         button {
             background-color: var(--primary-btn);
@@ -66,39 +77,40 @@
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s;
-            margin-top: 10px;
+            margin-top: 20px;
         }
         button:hover { background-color: var(--primary-btn-hover); }
 
-        /* ゲーム画面のレイアウト修正：中央に大きく配置 */
-        #game-screen {
+        #game-screen.active {
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 5;
-            display: flex;
-            width: 100%;
-            height: 100%;
             padding: 10px;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 600px;
+            align-items: flex-end;
+            width: 96vw;
+            max-width: 536px;
             margin-bottom: 15px;
         }
 
-        /* 盤面のレスポンシブ対応（画面サイズに合わせて最大化） */
-        .canvas-container {
-            width: 95vmin; /* 画面の短い辺の95% */
-            height: 95vmin;
-            max-width: 600px; /* PCでの最大サイズ */
-            max-height: 600px;
-            background-color: var(--board-bg);
-            border-radius: 8px;
-            padding: 1%;
+        .game-title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin: 0;
+            color: var(--text-color);
+            line-height: 1;
+        }
+
+        .canvas-wrapper {
+            width: 96vw;
+            max-width: 536px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
             position: relative;
         }
 
@@ -106,16 +118,7 @@
             width: 100%;
             height: 100%;
             display: block;
-            border-radius: 4px;
-        }
-
-        .instruction {
-            margin-top: 15px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            text-align: center;
-            color: #d9534f; /* エラーなどが目立つように赤系 */
-            height: 1.5em; /* メッセージの高さ固定でガタつき防止 */
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -128,28 +131,20 @@
             <div class="score-label">HIGH SCORE</div>
             <div class="score-value" id="title-highscore">0</div>
         </div>
-        <button id="start-btn">ゲームスタート</button>
-        <p class="instruction" style="color: #888;">
-            パネルをタップして選択しスワイプで移動。<br>
-            同じ数・サイズのパネルを合体させよう！<br>
-            ※512以上を作ると巨大化して空き地が減ります。
-        </p>
+        <button id="start-btn">START GAME</button>
     </div>
 
-    <div id="game-screen">
+    <div id="game-screen" class="screen">
         <div class="header">
-            <div>
-                <div style="font-size: 2rem; font-weight: bold; color: var(--text-color);">6x6</div>
-            </div>
-            <div class="score-box" style="margin-bottom: 0;">
+            <div class="game-title">6x6</div>
+            <div class="score-box">
                 <div class="score-label">SCORE</div>
                 <div class="score-value" id="game-score">0</div>
             </div>
         </div>
-        <div class="canvas-container">
+        <div class="canvas-wrapper">
             <canvas id="game-canvas"></canvas>
         </div>
-        <div class="instruction" id="status-msg">パネルを選択してください</div>
     </div>
 
     <div id="result-screen" class="screen">
@@ -158,37 +153,33 @@
             <div class="score-label">FINAL SCORE</div>
             <div class="score-value" id="result-score">0</div>
         </div>
-        <button id="retry-btn">もう一度遊ぶ</button>
+        <button id="retry-btn">PLAY AGAIN</button>
     </div>
 </div>
 
 <script>
-/**
- * 設定の一元化
- */
 const CONFIG = {
     gridSize: 6,
-    cellSize: 80, // Canvasの内部描画用ベースサイズ
+    cellSize: 80, 
     gap: 8,
     targetValue: 2048,
     
     sizeMap: {
-        2: 1, 4: 1, 8: 1, 16: 1, 32: 1, 64: 1, 128: 1, 256: 1, // 1x1
-        512: 2, 1024: 2,                                       // 2x2
-        2048: 3                                                // 3x3
+        2: 1, 4: 1, 8: 1, 16: 1, 32: 1, 64: 1, 128: 1, 256: 1, 
+        512: 2, 1024: 2,                                       
+        2048: 3                                                
     },
     
-    // 【修正】合計2048ピッタリ。これで空きマスが初期10マスになります！
     initialPool: [
-        512, 512,       // 2x2が2つ
-        256, 256,       // 1x1
-        128, 128,       // 1x1
-        64, 64,         // 1x1
-        32, 32,         // 1x1
-        16, 16,         // 1x1
-        8, 8,           // 1x1
-        4, 4,           // 1x1
-        2, 2, 2, 2      // 1x1が4つ
+        512, 512,       
+        256, 256,       
+        128, 128,       
+        64, 64,         
+        32, 32,         
+        16, 16,         
+        8, 8,           
+        4, 4,           
+        2, 2, 2, 2      
     ],
 
     imagePaths: {
@@ -221,7 +212,6 @@ function init() {
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     
-    // Canvas内部の解像度は高めに設定（表示サイズはCSSの100%に依存）
     let boardPx = CONFIG.gap + (CONFIG.cellSize + CONFIG.gap) * CONFIG.gridSize;
     canvas.width = boardPx;
     canvas.height = boardPx;
@@ -245,10 +235,8 @@ function bindEvents() {
 
     let startX = 0, startY = 0;
     
-    // タッチ＆マウス座標の取得補助関数（レスポンシブ対応）
     function getGridCoords(clientX, clientY) {
         let rect = canvas.getBoundingClientRect();
-        // 実際の表示サイズとCanvas内部解像度の比率を計算
         let scaleX = canvas.width / rect.width;
         let scaleY = canvas.height / rect.height;
         let px = (clientX - rect.left) * scaleX;
@@ -300,7 +288,7 @@ function bindEvents() {
 
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-    if (screenId !== 'game-screen') document.getElementById(screenId).classList.add('active');
+    document.getElementById(screenId).classList.add('active');
 }
 
 function startGame() {
@@ -309,8 +297,6 @@ function startGame() {
     state.selectedId = null;
     state.isGameOver = false;
     updateScore();
-    document.getElementById('status-msg').innerText = "パネルを選択してください";
-    document.getElementById('status-msg').style.color = "#888"; // 通常色
     
     let sortedPool = [...CONFIG.initialPool].sort((a,b) => b - a);
     sortedPool.forEach(val => {
@@ -354,12 +340,8 @@ function handleSelect(px, py) {
     let clickedTile = state.tiles.find(t => gx >= t.gx && gx < t.gx + t.size && gy >= t.gy && gy < t.gy + t.size);
     if(clickedTile) {
         state.selectedId = clickedTile.id;
-        document.getElementById('status-msg').innerText = "スワイプまたは矢印キーで移動";
-        document.getElementById('status-msg').style.color = "#888";
     } else {
         state.selectedId = null;
-        document.getElementById('status-msg').innerText = "パネルを選択してください";
-        document.getElementById('status-msg').style.color = "#888";
     }
 }
 
@@ -378,59 +360,121 @@ function processMove(tileId, dx, dy) {
     let tile = state.tiles.find(t => t.id === tileId);
     if(!tile) return;
 
-    let targetGx = tile.gx + dx, targetGy = tile.gy + dy;
-    if(targetGx < 0 || targetGy < 0 || targetGx + tile.size > CONFIG.gridSize || targetGy + tile.size > CONFIG.gridSize) return;
+    let currentGx = tile.gx;
+    let currentGy = tile.gy;
+    let targetGx = currentGx;
+    let targetGy = currentGy;
 
-    let collidingTiles = [];
-    for (let t of state.tiles) {
-        if(t.id === tile.id) continue;
-        if(targetGx < t.gx + t.size && targetGx + tile.size > t.gx && targetGy < t.gy + t.size && targetGy + tile.size > t.gy) {
-            collidingTiles.push(t);
+    let hitTile = null;
+    let willMerge = false;
+
+    while(true) {
+        let nextGx = targetGx + dx;
+        let nextGy = targetGy + dy;
+
+        // 壁チェック
+        if(nextGx < 0 || nextGy < 0 || nextGx + tile.size > CONFIG.gridSize || nextGy + tile.size > CONFIG.gridSize) {
+            break; 
+        }
+
+        // 衝突チェック
+        let cols = state.tiles.filter(t => t.id !== tile.id && 
+            nextGx < t.gx + t.size && nextGx + tile.size > t.gx && 
+            nextGy < t.gy + t.size && nextGy + tile.size > t.gy);
+
+        if(cols.length === 0) {
+            targetGx = nextGx;
+            targetGy = nextGy;
+        } else if (cols.length === 1) {
+            let target = cols[0];
+            let isAligned = false;
+            if(dx !== 0 && targetGy === target.gy && tile.size === target.size) isAligned = true;
+            if(dy !== 0 && targetGx === target.gx && tile.size === target.size) isAligned = true;
+
+            if(isAligned && tile.val === target.val) {
+                let newVal = tile.val * 2;
+                let newSize = CONFIG.sizeMap[newVal] || tile.size;
+
+                let tempTiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
+                let canGrow = false;
+                let finalGx = target.gx;
+                let finalGy = target.gy;
+
+                // ★修正箇所：全方位の空きスペースを探索して巨大化できるか判定する★
+                if (newSize === target.size) {
+                    canGrow = true;
+                } else {
+                    let candidates = [];
+                    // 新しいサイズのパネルが、元のtargetのパネルを完全に覆える全座標パターンをループ
+                    for(let cy = target.gy - newSize + target.size; cy <= target.gy; cy++) {
+                        for(let cx = target.gx - newSize + target.size; cx <= target.gx; cx++) {
+                            // 盤面からはみ出さないか
+                            if(cx >= 0 && cy >= 0 && cx + newSize <= CONFIG.gridSize && cy + newSize <= CONFIG.gridSize) {
+                                let collision = false;
+                                // 他のパネルと重ならないか
+                                for(let t of tempTiles) {
+                                    if(cx < t.gx + t.size && cx + newSize > t.gx && cy < t.gy + t.size && cy + newSize > t.gy) {
+                                        collision = true;
+                                        break;
+                                    }
+                                }
+                                if(!collision) {
+                                    candidates.push({x: cx, y: cy});
+                                }
+                            }
+                        }
+                    }
+
+                    // 1つでも置ける場所があれば合体許可
+                    if(candidates.length > 0) {
+                        canGrow = true;
+                        // 可能な配置先のうち、元の位置に一番近いものを採用する
+                        candidates.sort((a, b) => {
+                            return (Math.abs(a.x - target.gx) + Math.abs(a.y - target.gy)) - (Math.abs(b.x - target.gx) + Math.abs(b.y - target.gy));
+                        });
+                        finalGx = candidates[0].x;
+                        finalGy = candidates[0].y;
+                    }
+                }
+
+                if(canGrow) {
+                    targetGx = nextGx; 
+                    targetGy = nextGy;
+                    hitTile = target;
+                    willMerge = true;
+                    // 合体後に生まれる新パネルの「決定した左上座標」を保持しておく
+                    hitTile.finalGx = finalGx;
+                    hitTile.finalGy = finalGy;
+                }
+            }
+            break; 
+        } else {
+            break;
         }
     }
 
-    // 毎回メッセージをリセット
-    document.getElementById('status-msg').innerText = "スワイプまたは矢印キーで移動";
-    document.getElementById('status-msg').style.color = "#888";
-
-    if(collidingTiles.length === 0) {
-        tile.gx = targetGx; tile.gy = targetGy;
-    } else if (collidingTiles.length === 1) {
-        let target = collidingTiles[0];
-        let isAligned = false;
-        if(dx !== 0 && tile.gy === target.gy && tile.size === target.size) isAligned = true;
-        if(dy !== 0 && tile.gx === target.gx && tile.size === target.size) isAligned = true;
-
-        if(isAligned && tile.val === target.val) {
+    if(targetGx !== currentGx || targetGy !== currentGy) {
+        if(willMerge) {
             let newVal = tile.val * 2;
-            let newSize = CONFIG.sizeMap[newVal] || tile.size;
+            state.score += newVal;
+            updateScore();
             
-            let mergeGx = (dx > 0 || dy > 0) ? target.gx : tile.gx;
-            let mergeGy = (dx > 0 || dy > 0) ? target.gy : tile.gy;
+            state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== hitTile.id);
+            
+            // 探索して見つけた最適な座標に新パネルを生成
+            let fGx = hitTile.finalGx !== undefined ? hitTile.finalGx : hitTile.gx;
+            let fGy = hitTile.finalGy !== undefined ? hitTile.finalGy : hitTile.gy;
+            addTile(fGx, fGy, newVal);
+            
+            state.selectedId = state.tiles[state.tiles.length - 1].id;
 
-            let tempTiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
-            let canGrow = true;
-            if(mergeGx + newSize > CONFIG.gridSize || mergeGy + newSize > CONFIG.gridSize) canGrow = false;
-            for(let t of tempTiles) {
-                if(mergeGx < t.gx + t.size && mergeGx + newSize > t.gx && mergeGy < t.gy + t.size && mergeGy + newSize > t.gy) canGrow = false;
-            }
-
-            if(canGrow) {
-                state.score += newVal;
-                updateScore();
-                state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
-                addTile(mergeGx, mergeGy, newVal);
-                state.selectedId = state.tiles[state.tiles.length - 1].id;
-
-                if(newVal === CONFIG.targetValue) endGame(true);
-            } else {
-                let msg = document.getElementById('status-msg');
-                msg.innerText = "巨大化するスペースがありません！";
-                msg.style.color = "#d9534f"; // 赤色で強調
-            }
+            if(newVal === CONFIG.targetValue) endGame(true);
+        } else {
+            tile.gx = targetGx;
+            tile.gy = targetGy;
         }
+        checkStuck();
     }
-    checkStuck();
 }
 
 function checkStuck() {
@@ -466,14 +510,17 @@ function endGame(isWin) {
 }
 
 function renderLoop() {
-    ctx.fillStyle = CONFIG.colors.empty;
+    ctx.fillStyle = "#bbada0"; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     for(let y=0; y<CONFIG.gridSize; y++) {
         for(let x=0; x<CONFIG.gridSize; x++) {
             let px = CONFIG.gap + x * (CONFIG.cellSize + CONFIG.gap);
             let py = CONFIG.gap + y * (CONFIG.cellSize + CONFIG.gap);
-            ctx.fillStyle = "rgba(187, 173, 160, 0.5)";
-            ctx.fillRect(px, py, CONFIG.cellSize, CONFIG.cellSize);
+            ctx.fillStyle = CONFIG.colors.empty;
+            ctx.beginPath();
+            ctx.roundRect(px, py, CONFIG.cellSize, CONFIG.cellSize, 4);
+            ctx.fill();
         }
     }
 
@@ -481,8 +528,8 @@ function renderLoop() {
         let targetPx = CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap);
         let targetPy = CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap);
         
-        tile.px += (targetPx - tile.px) * 0.3;
-        tile.py += (targetPy - tile.py) * 0.3;
+        tile.px += (targetPx - tile.px) * 0.4;
+        tile.py += (targetPy - tile.py) * 0.4;
 
         let drawSize = tile.size * CONFIG.cellSize + (tile.size - 1) * CONFIG.gap;
         let img = loadedImages[tile.val];
@@ -491,19 +538,24 @@ function renderLoop() {
             ctx.drawImage(img, tile.px, tile.py, drawSize, drawSize);
         } else {
             ctx.fillStyle = CONFIG.colors[tile.val] || "#3c3a32";
-            ctx.fillRect(tile.px, tile.py, drawSize, drawSize);
+            ctx.beginPath();
+            ctx.roundRect(tile.px, tile.py, drawSize, drawSize, tile.size > 1 ? 8 : 4);
+            ctx.fill();
+            
             ctx.fillStyle = (tile.val <= 4) ? "#776e65" : "#f9f6f2";
-            let fontSize = CONFIG.cellSize * 0.5 * (tile.size * 0.8);
+            let fontSize = CONFIG.cellSize * 0.45 * (tile.size * 0.85);
             ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2);
+            ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2 + (fontSize*0.05));
         }
 
         if(state.selectedId === tile.id) {
-            ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(tile.px, tile.py, drawSize, drawSize);
+            ctx.strokeStyle = "#e74c3c";
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.roundRect(tile.px, tile.py, drawSize, drawSize, tile.size > 1 ? 8 : 4);
+            ctx.stroke();
         }
     });
 
