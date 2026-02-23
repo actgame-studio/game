@@ -21,23 +21,32 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', Arial, sans-serif;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden;
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-start; /* 画面上部を基準に配置 */
+            min-height: 100vh;       /* スマホで見切れたらスクロール可能に */
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch;
         }
 
         #app-container {
-            width: 100%; height: 100%; position: relative;
-            display: flex; justify-content: center; align-items: center;
+            width: 100%; 
+            max-width: 500px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            padding: 5vh 10px 20px; /* 上部に少し余白、下部にも余白を確保 */
         }
 
         .screen {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-            background-color: var(--bg-color); z-index: 10;
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            width: 100%;
         }
         .screen.active { display: flex; }
 
-        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 0px #fff, 4px 4px 0px #e8d3c5; }
+        h1 { font-size: 2.5rem; margin: 0 0 25px 0; text-shadow: 2px 2px 0px #fff, 4px 4px 0px #e8d3c5; text-align: center; }
         
         .info-box { 
             background: var(--score-bg); color: #fff; padding: 8px 15px; 
@@ -50,17 +59,17 @@
         button {
             background-color: var(--primary-btn); color: white; border: none;
             padding: 15px 35px; font-size: 1.3rem; font-weight: bold; border-radius: 25px; 
-            cursor: pointer; transition: all 0.2s; margin-top: 25px;
+            cursor: pointer; transition: all 0.2s; margin-top: 30px;
             box-shadow: 0 5px 10px rgba(255, 183, 197, 0.4); text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 7px 14px rgba(255, 183, 197, 0.5); }
         button:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        #game-screen.active { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
+        #game-screen { gap: 15px; }
 
         .header {
             display: flex; justify-content: space-between; align-items: flex-end;
-            width: 90vw; max-width: 450px; margin-bottom: 15px; gap: 10px;
+            width: 100%; max-width: 450px;
         }
 
         .header-left { display: flex; flex-direction: column; gap: 8px; }
@@ -68,13 +77,24 @@
         .game-title { font-size: 1.8rem; font-weight: bold; margin: 0; line-height: 1; text-shadow: 2px 2px 0px #fff, 3px 3px 0px #e8d3c5; }
 
         .canvas-wrapper {
-            width: 90vw; max-width: 450px; aspect-ratio: 6 / 8;
-            margin: 0 auto; position: relative; border-radius: 20px;
+            width: 100%; 
+            max-width: 450px; 
+            aspect-ratio: 6 / 8;
+            position: relative; 
+            border-radius: 20px;
             box-shadow: inset 0 3px 8px rgba(0,0,0,0.05), 0 8px 16px rgba(0,0,0,0.08);
-            padding: 8px; background-color: var(--board-bg);
+            padding: 8px; 
+            background-color: var(--board-bg);
         }
 
-        canvas { width: 100%; height: 100%; display: block; border-radius: 16px; }
+        canvas { 
+            width: 100% !important; /* CSSで画面幅に合わせて自動縮小 */
+            height: auto !important; 
+            display: block; 
+            border-radius: 16px; 
+        }
+
+        #result-title { margin-top: 20px; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
 </head>
@@ -167,13 +187,14 @@ let state = {
     tiles: [], score: 0, moves: 0,
     highScore: localStorage.getItem('mergeJamHighScore') || 0,
     selectedId: null, isGameOver: false, tileCounter: 0,
-    invalidMerge: null // 【追加】マージ失敗時のゴースト表示用状態
+    invalidMerge: null,
+    particles: []
 };
 
 let canvas, ctx;
 let animationFrameId;
 
-// 【追加】音響管理
+// 音響管理
 let audioCtx;
 function initAudio() {
     if (!audioCtx) {
@@ -192,7 +213,6 @@ function playSound(type) {
     gain.connect(audioCtx.destination);
     
     if (type === 'merge') {
-        // ピロリン♪（マージ成功音）
         osc.type = 'sine';
         osc.frequency.setValueAtTime(600, audioCtx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
@@ -200,7 +220,6 @@ function playSound(type) {
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
         osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     } else if (type === 'error') {
-        // コッ（マージ失敗音）
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
@@ -226,7 +245,7 @@ function init() {
 
 function bindEvents() {
     document.getElementById('start-btn').addEventListener('click', () => {
-        initAudio(); // ユーザー操作を機に音声を許可
+        initAudio(); 
         startGame();
     });
     document.getElementById('retry-btn').addEventListener('click', () => { 
@@ -238,7 +257,9 @@ function bindEvents() {
     
     function getGridCoords(clientX, clientY) {
         let rect = canvas.getBoundingClientRect();
-        let scaleX = canvas.width / rect.width; let scaleY = canvas.height / rect.height;
+        // CSSで縮小されても正しい座標を取れるようにスケールを計算
+        let scaleX = canvas.width / rect.width; 
+        let scaleY = canvas.height / rect.height;
         return { px: (clientX - rect.left) * scaleX, py: (clientY - rect.top) * scaleY };
     }
 
@@ -284,6 +305,7 @@ function switchScreen(screenId) {
 function startGame() {
     state.tiles = []; state.score = 0; state.moves = CONFIG.initialMoves;
     state.selectedId = null; state.isGameOver = false; state.invalidMerge = null;
+    state.particles = [];
     updateUI();
     
     let sortedPool = [...CONFIG.initialPool].sort((a,b) => b - a);
@@ -304,8 +326,28 @@ function addTile(gx, gy, val) {
     let w = CONFIG.sizeMap[val].w; let h = CONFIG.sizeMap[val].h;
     let px = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap);
     let py = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap);
-    // 【追加】shakeTimerを初期化
     state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, w, h, shakeTimer: 0 });
+}
+
+function createParticles(gx, gy, w, h, val) {
+    let centerX = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap) + (w * CONFIG.cellSize + (w - 1) * CONFIG.gap) / 2;
+    let centerY = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap) + (h * CONFIG.cellSize + (h - 1) * CONFIG.gap) / 2;
+    let tileColor = CONFIG.colors[val] || "#ffffff";
+
+    for (let i = 0; i < 20; i++) {
+        let angle = Math.random() * Math.PI * 2; 
+        let speed = Math.random() * 4 + 2; 
+        state.particles.push({
+            x: centerX,
+            y: centerY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0, 
+            decay: Math.random() * 0.03 + 0.02, 
+            size: Math.random() * 5 + 3, 
+            color: Math.random() > 0.5 ? tileColor : "#ffffff" 
+        });
+    }
 }
 
 function canPlace(gx, gy, w, h, ignoreId) {
@@ -402,16 +444,9 @@ function processMove(tileId, dx, dy) {
                     hitTile = target; willMerge = true;
                     hitTile.finalGx = finalGx; hitTile.finalGy = finalGy;
                 } else {
-                    // 【追加】スペース不足でマージできない時の処理
-                    playSound('error'); // エラー音を鳴らす
-                    tile.shakeTimer = 20; // 20フレーム揺らす
-                    state.invalidMerge = { 
-                        gx: target.gx, 
-                        gy: target.gy, 
-                        w: newW, 
-                        h: newH, 
-                        timer: 30 // 30フレーム ゴーストを表示
-                    };
+                    playSound('error'); 
+                    tile.shakeTimer = 20; 
+                    state.invalidMerge = { gx: target.gx, gy: target.gy, w: newW, h: newH, timer: 30 };
                 }
             }
             break; 
@@ -422,12 +457,17 @@ function processMove(tileId, dx, dy) {
         state.moves--; 
         
         if(willMerge) {
-            playSound('merge'); // 【追加】成功音を鳴らす
+            playSound('merge'); 
             let newVal = tile.val * 2; state.score += newVal;
             state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== hitTile.id);
             let fGx = hitTile.finalGx !== undefined ? hitTile.finalGx : hitTile.gx;
             let fGy = hitTile.finalGy !== undefined ? hitTile.finalGy : hitTile.gy;
             addTile(fGx, fGy, newVal);
+            
+            let newW = CONFIG.sizeMap[newVal].w;
+            let newH = CONFIG.sizeMap[newVal].h;
+            createParticles(fGx, fGy, newW, newH, newVal);
+
             state.selectedId = state.tiles[state.tiles.length - 1].id;
             if(newVal === CONFIG.targetValue) endGame(true);
         } else {
@@ -488,11 +528,10 @@ function renderLoop() {
         tile.px += (CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap) - tile.px) * 0.4;
         tile.py += (CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap) - tile.py) * 0.4;
 
-        // 【追加】揺らす処理の計算（見た目の座標だけずらす）
         let renderPx = tile.px;
         if (tile.shakeTimer > 0) {
             tile.shakeTimer--;
-            renderPx += Math.sin(tile.shakeTimer) * 4; // 横方向に揺らす
+            renderPx += Math.sin(tile.shakeTimer) * 4;
         }
 
         let drawSizeW = tile.w * CONFIG.cellSize + (tile.w - 1) * CONFIG.gap;
@@ -519,7 +558,6 @@ function renderLoop() {
         }
     });
 
-    // 【追加】マージ失敗時のゴースト（赤枠＆バツ印）の描画
     if (state.invalidMerge && state.invalidMerge.timer > 0) {
         state.invalidMerge.timer--;
         let ig = state.invalidMerge;
@@ -532,7 +570,7 @@ function renderLoop() {
         ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 3;
-        ctx.setLineDash([8, 8]); // 点線にする
+        ctx.setLineDash([8, 8]);
         drawRoundedRectPath(ctx, px, py, w, h, 16);
         ctx.fill();
         ctx.stroke();
@@ -542,6 +580,26 @@ function renderLoop() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("×", px + w / 2, py + h / 2);
+        ctx.restore();
+    }
+
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+        let p = state.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+
+        if (p.life <= 0) {
+            state.particles.splice(i, 1); 
+            continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.life; 
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 

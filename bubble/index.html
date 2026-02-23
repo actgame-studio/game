@@ -9,36 +9,41 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         
         body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; 
+            width: 100%; 
+            /* スマホのアドレスバー変動に対応する最新の指定（見切れ防止の要） */
+            height: 100vh; /* 古いブラウザ用フォールバック */
+            height: 100dvh; 
             background-color: #f8e1e7;
-            touch-action: none;
+            touch-action: none; /* スワイプによるスクロールを防止 */
             display: flex; justify-content: center; align-items: center;
             font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
             color: #5a4a42;
+            overflow: hidden;
         }
         
         #app-container {
             display: flex; flex-direction: column;
-            width: 100%; height: 100%;
-            max-width: 440px; max-height: 840px;
-            aspect-ratio: 440 / 840;
+            width: 100%; height: 100%; 
+            max-width: 440px; max-height: 840px; /* PCでの最大サイズ */
             background: #ffffff;
             border-radius: 15px; border: 4px solid #f48fb1;
             box-shadow: 0 15px 35px rgba(233, 30, 99, 0.2);
             overflow: hidden;
         }
         
+        /* 上部のUIバー（固定高さ） */
         #top-ui {
-            flex: 0 0 calc(100% * 90 / 840);
+            flex: 0 0 85px; 
             background: #fff0f5;
             border-bottom: 3px solid #f8bbd0;
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 15px;
+            box-sizing: border-box;
+            z-index: 20;
         }
 
-        .score-area {
-            font-weight: 900; font-size: 0.95rem; line-height: 1.3;
-        }
+        .score-area { font-weight: 900; font-size: 0.95rem; line-height: 1.3; }
 
         #btn-guide {
             padding: 6px 12px; font-size: 0.9rem; font-weight: bold;
@@ -58,14 +63,26 @@
             animation: pulse 1s infinite;
         }
         
+        /* ゲーム画面エリア（残りの高さをすべて使う） */
         #game-wrapper {
-            flex: 0 0 calc(100% * 750 / 840);
+            flex: 1 1 auto; 
             position: relative; width: 100%;
+            background: #fbf0f4;
+            display: flex; justify-content: center; align-items: flex-end; /* 発射台を常に一番下へ密着させる */
+            overflow: hidden;
         }
-        canvas { display: block; width: 100%; height: 100%; }
         
+        canvas { 
+            /* 画面サイズに合わせてアスペクト比を保ちつつ最大化 */
+            max-width: 100%; 
+            max-height: 100%; 
+            aspect-ratio: 440 / 750; 
+            object-fit: contain;
+        }
+        
+        /* オーバーレイUI */
         .ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             background: rgba(255, 255, 255, 0.85); z-index: 10; transition: opacity 0.3s;
             backdrop-filter: blur(3px);
@@ -87,10 +104,6 @@
             cursor: pointer; box-shadow: 0 6px 0 #f48fb1; transition: transform 0.1s, box-shadow 0.1s;
         }
         .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #f48fb1; }
-
-        @media (max-aspect-ratio: 440/840) {
-            #app-container { width: 100vw; height: auto; border-radius: 0; border: none; }
-        }
     </style>
 </head>
 <body>
@@ -135,7 +148,7 @@
 const CONFIG = {
     width: 440, height: 750, radius: 20, speed: 20,
     cols: 11, rows: 20, startRows: 8,
-    colors: ['#ff85a2', '#6bc1ff', '#69e294', '#fce258', '#b882f8'],
+    colors: ['#ff85a2', '#6bc1ff', '#69e294', '#fce258', '#b882f8'], // くっきりマカロンカラー
     turnsToDrop: 4
 };
 
@@ -153,6 +166,7 @@ let combo = 0; let turnCounter = 0; let bounceCount = 0;
 let particles = []; let floatTexts = []; let shakeTime = 0;
 let isGuideOn = false; let audioCtx = null;
 
+// === 音源初期化 ===
 function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -168,6 +182,7 @@ function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     osc.start(); osc.stop(audioCtx.currentTime + duration);
 }
 
+// === ゲーム初期化 ===
 function initGame() {
     score = 0; combo = 0; turnCounter = 0; gridOffset = 0; 
     updateHUD(); updateTurnUI();
@@ -228,6 +243,7 @@ function fireBubble() {
     playTone(300, 'sine', 0.1);
 }
 
+// === 物理演算 ===
 function updatePhysics() {
     for (let i = fallingBubbles.length - 1; i >= 0; i--) {
         let fb = fallingBubbles[i]; fb.x += fb.vx; fb.vy += 0.5; fb.y += fb.vy;
@@ -309,6 +325,7 @@ function getNeighbors(r, c) {
     return neighbors;
 }
 
+// === マッチング＆錬金システム ===
 function checkMatches(startR, startC, type) {
     let matchGroup = []; let visited = new Set();
     let queue = [{r: startR, c: startC}]; visited.add(`${startR},${startC}`);
@@ -379,7 +396,7 @@ function triggerChainSpecials(clearedBubbles, skipPos = null) {
     }
 }
 
-// 🌟 爆発音をポップな「ポォォンッ！」に変更 🌟
+// 💣 爆弾（ポォォンッ！）
 function explodeBomb(r, c, triggerDrop = true) {
     playTone(350, 'triangle', 0.2, 0.3); 
     shakeTime = 10;
@@ -396,7 +413,7 @@ function explodeBomb(r, c, triggerDrop = true) {
     addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
-// 🌟 雷の音を魔法っぽい「ピュイィィン！」に変更 🌟
+// ⚡ 雷（ピュイィィン！）
 function explodeRow(r, c, triggerDrop = true) {
     playTone(600, 'sine', 0.1, 0.2); setTimeout(()=>playTone(800, 'sine', 0.15, 0.2), 50);
     shakeTime = 10;
@@ -411,7 +428,7 @@ function explodeRow(r, c, triggerDrop = true) {
     addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
-// 🌟 カラーボムの音をキラキラした「キラーン✨」に変更 🌟
+// 🌈 カラーボム（キラキラキラーン✨）
 function explodeColorBomb(r, c, triggerDrop = true) {
     let targetColor = -1;
     for (let n of getNeighbors(r, c)) { let t = grid[n.r][n.c]; if (t !== null && t < 5) { targetColor = t; break; } }
@@ -446,9 +463,7 @@ function dropFloatingBubbles() {
         for (let c = 0; c < colsInRow; c++) {
             let type = grid[r][c];
             if (type === 6 || type === 8 || type === 9) {
-                if (!connected.has(`${r},${c}`)) {
-                    connected.add(`${r},${c}`); queue.push({r: r, c: c});
-                }
+                if (!connected.has(`${r},${c}`)) { connected.add(`${r},${c}`); queue.push({r: r, c: c}); }
             }
         }
     }
@@ -488,8 +503,7 @@ function updateTurnUI() {
     document.getElementById('turn-dots').innerText = dots;
     
     let box = document.getElementById('turn-indicator');
-    if (left <= 1) { box.classList.add('danger'); } 
-    else { box.classList.remove('danger'); }
+    if (left <= 1) { box.classList.add('danger'); } else { box.classList.remove('danger'); }
 }
 
 function checkTurnDrop(matchMade) {
@@ -500,8 +514,7 @@ function checkTurnDrop(matchMade) {
         for(let c=0; c<colsInRow; c++) { let rand = Math.random(); if (rand < 0.05) newRow[c] = 5; else newRow[c] = Math.floor(Math.random() * 5); }
         grid.unshift(newRow); grid.pop(); 
         shakeTime = 10; 
-        playTone(400, 'sine', 0.1, 0.2); 
-        setTimeout(() => playTone(500, 'sine', 0.15, 0.2), 100);
+        playTone(400, 'sine', 0.1, 0.2); setTimeout(() => playTone(500, 'sine', 0.15, 0.2), 100);
     }
     updateHUD(); updateTurnUI();
 }
@@ -536,7 +549,7 @@ function getColor(type) {
     return '#fff';
 }
 
-// 🌟 色を暗くするヘルパー関数を追加（アウトライン用） 🌟
+// 🎨 色を暗くしてアウトライン色を作る関数
 function darkenColor(color, amount) {
     let usePound = false;
     if (color[0] == "#") { color = color.slice(1); usePound = true; }
@@ -552,15 +565,15 @@ function createParticles(x, y, color) {
 }
 function spawnText(x, y, text, color, maxLife = 40, size = 20) { floatTexts.push({x, y, text, color, life: maxLife, maxLife, size}); }
 
-// === マシュマロ質感＋くっきりアウトライン描画 ===
+// === 描画: マシュマロ質感＋アウトライン追加 ===
 function drawBubbleEx(x, y, type, radius) {
     let baseColor = getColor(type);
     
-    // 1. ベースの塗り
+    // ベース
     ctx.beginPath(); ctx.arc(x, y, radius - 1.5, 0, Math.PI * 2);
     ctx.fillStyle = baseColor; ctx.fill();
 
-    // 2. マシュマロ風の柔らかいハイライトと影
+    // 立体感
     if (type < 5 || type >= 6) {
         let grad = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
         grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');   
@@ -568,24 +581,23 @@ function drawBubbleEx(x, y, type, radius) {
         grad.addColorStop(1, 'rgba(0, 0, 0, 0.1)');        
         ctx.fillStyle = grad; ctx.fill();
         
-        // ツヤ
         ctx.beginPath();
         ctx.ellipse(x - radius * 0.3, y - radius * 0.3, radius * 0.2, radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; ctx.fill();
     }
 
-    // 🌟 3. 同系色の濃いアウトラインを描画 🌟
+    // 🎨 くっきりアウトラインの描画
     let outlineColor;
-    if (type === 5) outlineColor = '#78909c'; // 石は固定色
-    else if (baseColor.startsWith('#')) outlineColor = darkenColor(baseColor, 40); // 通常色を暗くする
-    else outlineColor = 'rgba(0,0,0,0.2)'; // フォールバック
+    if (type === 5) outlineColor = '#78909c'; 
+    else if (baseColor.startsWith('#')) outlineColor = darkenColor(baseColor, 40); 
+    else outlineColor = 'rgba(0,0,0,0.2)'; 
 
-    ctx.lineWidth = 2; // 少し細くしてシャープに
+    ctx.lineWidth = 2; 
     ctx.strokeStyle = outlineColor; 
-    ctx.beginPath(); ctx.arc(x, y, radius - 1, 0, Math.PI * 2); // 塗りとズレないように調整
+    ctx.beginPath(); ctx.arc(x, y, radius - 1, 0, Math.PI * 2); 
     ctx.stroke();
 
-    // 4. アイコン描画
+    // アイコン
     if (type === 5) {
         ctx.fillStyle = '#b0bec5'; ctx.fillRect(x-radius*0.5, y-radius*0.5, radius, radius);
         ctx.strokeStyle = '#78909c'; ctx.lineWidth = 2; ctx.strokeRect(x-radius*0.5, y-radius*0.5, radius, radius);
@@ -599,7 +611,7 @@ function drawBubbleEx(x, y, type, radius) {
 }
 
 function drawGame() {
-    ctx.fillStyle = '#fbf0f4'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTime--; }
@@ -615,6 +627,7 @@ function drawGame() {
     for (let fb of fallingBubbles) drawBubbleEx(fb.x, fb.y, fb.type, CONFIG.radius);
 
     if (gameState === 'playing') {
+        // 発射台エリアのデザイン
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(0, CONFIG.height - 85, CONFIG.width, 85);
         ctx.strokeStyle = '#f8bbd0'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(0, CONFIG.height - 85); ctx.lineTo(CONFIG.width, CONFIG.height - 85); ctx.stroke();
@@ -696,7 +709,7 @@ function drawGame() {
         let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.02;
         if (p.life <= 0) { particles.splice(i, 1); continue; }
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color; 
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
         ctx.globalAlpha = 1.0;
     }
 
@@ -751,6 +764,7 @@ btnGuide.addEventListener('click', (e) => {
     else { btnGuide.innerText = 'GUIDE: OFF'; btnGuide.classList.remove('active'); }
 });
 
+// 📱 スケール計算をキャンバス要素自体から取得するよう修正
 function updateInputPos(e) {
     const rect = canvas.getBoundingClientRect(); 
     const scaleX = canvas.width / rect.width; 
