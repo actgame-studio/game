@@ -3,120 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML5 Bubble Shooter</title>
+    <title>Ultimate Bubble Shooter</title>
     <style>
-        /* === CSS: レスポンシブ・UI・デフォルトイベント無効化 === */
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+        /* === CSS === */
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #1a1a1a;
-            /* スクロール等のデフォルトタッチアクションを無効化 */
-            touch-action: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #111; touch-action: none;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
         #game-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 400px; /* PCでの最大幅 */
-            height: 100%;
-            max-height: 600px;
-            aspect-ratio: 2 / 3;
-            background-color: #2c3e50;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            overflow: hidden;
+            position: relative; width: 100%; max-width: 450px; height: 100%; max-height: 750px;
+            background-color: #2c3e50; box-shadow: 0 0 20px rgba(0,0,0,0.8); overflow: hidden;
         }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* アスペクト比を維持してスケーリング */
-        }
-
-        /* UIオーバーレイ */
+        canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+        
+        /* UI Layer */
         .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.75);
-            color: white;
-            z-index: 10;
-            transition: opacity 0.3s;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; transition: opacity 0.3s;
         }
-
-        .hidden {
-            display: none !important;
-        }
-
-        h1 { margin: 0 0 20px 0; font-size: 2.5rem; text-shadow: 2px 2px 4px #000; text-align: center; }
+        .hidden { display: none !important; }
+        h1 { margin: 0 0 10px 0; font-size: 2.8rem; text-align: center; background: -webkit-linear-gradient(#f1c40f, #e74c3c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(2px 2px 2px #000); }
         h2 { margin: 0 0 10px 0; font-size: 2rem; color: #f1c40f; }
         p { margin: 5px 0; font-size: 1.2rem; }
-
         .btn {
-            margin-top: 30px;
-            padding: 12px 30px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            background: #e74c3c;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.1s, background 0.2s;
+            margin-top: 20px; padding: 15px 40px; font-size: 1.3rem; font-weight: bold;
+            color: white; background: #e74c3c; border: none; border-radius: 30px;
+            cursor: pointer; box-shadow: 0 4px 0 #c0392b; transition: transform 0.1s;
         }
-        .btn:active {
-            transform: scale(0.95);
-            background: #c0392b;
-        }
-
-        /* プレイ中のHUD */
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #c0392b; }
+        
+        /* HUD */
         #hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            color: white;
-            font-weight: bold;
-            font-size: 1.1rem;
-            z-index: 5;
-            pointer-events: none;
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            color: white; font-weight: bold; font-size: 1.1rem; z-index: 5; pointer-events: none;
+            text-shadow: 1px 1px 2px black;
         }
+        .gauge-container { width: 100px; height: 15px; background: rgba(0,0,0,0.5); border: 2px solid white; border-radius: 8px; margin-top: 5px; overflow: hidden; }
+        #combo-bar { width: 0%; height: 100%; background: #f1c40f; transition: width 0.2s; }
+        #turn-warning { color: #e74c3c; font-size: 1.2rem; display: none; }
     </style>
 </head>
 <body>
 
 <div id="game-wrapper">
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <canvas id="gameCanvas" width="450" height="750"></canvas>
     
     <div id="hud" class="hidden">
-        <div>SCORE: <span id="hud-score">0</span></div>
-        <div>HIGH: <span id="hud-highscore">0</span></div>
+        <div>
+            SCORE: <span id="hud-score">0</span><br>
+            HIGH: <span id="hud-highscore">0</span>
+        </div>
+        <div style="text-align: right;">
+            COMBO<br>
+            <div class="gauge-container"><div id="combo-bar"></div></div>
+            <div id="turn-warning">⚠️ 天井接近</div>
+        </div>
     </div>
 
     <div id="screen-title" class="ui-layer">
-        <h1>BUBBLE<br>SHOOTER</h1>
+        <h1>ULTIMATE<br>BUBBLE</h1>
         <p>High Score: <span id="title-highscore">0</span></p>
+        <p style="font-size: 0.9rem; color:#aaa; margin-top:20px; text-align:center;">
+            画面下部タップでバブル入れ替え<br>5コンボで必殺バブル出現！
+        </p>
         <button class="btn" id="btn-start">GAME START</button>
     </div>
 
@@ -124,235 +78,245 @@
         <h2 id="result-title">GAME OVER</h2>
         <p>Score: <span id="result-score">0</span></p>
         <p>High Score: <span id="result-highscore">0</span></p>
-        <button class="btn" id="btn-retry">もう一度遊ぶ</button>
+        <button class="btn" id="btn-retry">RETRY</button>
     </div>
 </div>
 
 <script>
 /**
  * ==========================================
- * CONFIG: ゲーム設定の一元化
+ * CONFIG & STATE
  * ==========================================
  */
 const CONFIG = {
-    // 画面の論理解像度（内部計算用）
-    width: 400,
-    height: 600,
-    
-    // バブル設定
-    radius: 20,              // バブルの半径
-    speed: 16,               // 発射スピード
-    colors: ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9'], // CSS代替描画用の色
-    
-    // アセット設定（同じディレクトリのspriteフォルダに配置するだけ）
-    images: {
-        0: 'sprite/red.png',
-        1: 'sprite/blue.png',
-        2: 'sprite/green.png',
-        3: 'sprite/yellow.png',
-        4: 'sprite/purple.png'
-    },
-    
-    // グリッド設定
-    cols: 10,                // 1行の最大列数
-    rows: 15,                // 画面に入る最大行数
-    startRows: 6             // 初期状態のバブル行数
+    width: 450, height: 750,
+    radius: 18, speed: 20,
+    cols: 11, rows: 20, startRows: 8,
+    colors: ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9'],
+    maxCombo: 5, turnsToDrop: 5
 };
 
-/**
- * ==========================================
- * グローバル変数・状態管理
- * ==========================================
- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let gameState = 'title'; // 'title', 'playing', 'result'
-let score = 0;
-let highScore = parseInt(localStorage.getItem('bubbleHighScore')) || 0;
-
-let grid = [];
-let currentBubble = null;
+let gameState = 'title'; 
+let score = 0; let highScore = parseInt(localStorage.getItem('ultBubbleHigh')) || 0;
+let grid = []; let gridOffset = 0;
+let currentBubble = null; let nextBubble = null; let holdBubble = null;
 let flyingBubble = null;
+let fallingBubbles = []; // 落下アニメーション用の配列を追加
+let inputX = CONFIG.width/2; let inputY = CONFIG.height/2; let isPressing = false;
 
-// 入力座標
-let inputX = CONFIG.width / 2;
-let inputY = CONFIG.height / 2;
-let isPressing = false;
+let combo = 0; let turnCounter = 0; let bounceCount = 0;
+let particles = []; let floatTexts = []; let shakeTime = 0;
 
-// プリロードされた画像オブジェクトの格納先
-const loadedImages = {};
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
 
 /**
  * ==========================================
- * 初期化・アセットロード
+ * INITIALIZATION
  * ==========================================
  */
-function preloadImages() {
-    for (const key in CONFIG.images) {
-        const img = new Image();
-        img.src = CONFIG.images[key];
-        img.onload = () => { loadedImages[key] = img; };
-        // ロード失敗時は null のままにし、描画時にCSS描画へフォールバックする
-        img.onerror = () => { loadedImages[key] = null; console.warn(`Image missing: ${CONFIG.images[key]}. Falling back to CSS drawing.`); };
-    }
-}
-
 function initGame() {
-    score = 0;
-    updateHUD();
-    grid = [];
+    score = 0; combo = 0; turnCounter = 0; gridOffset = 0; updateHUD();
+    grid = []; particles = []; floatTexts = []; fallingBubbles = [];
     
-    // グリッドの初期生成
     for (let r = 0; r < CONFIG.rows; r++) {
         grid[r] = [];
-        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
             if (r < CONFIG.startRows) {
-                grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length);
-            } else {
-                grid[r][c] = null;
-            }
+                let rand = Math.random();
+                if (rand < 0.05) grid[r][c] = 5; // Stone
+                else if (rand < 0.08) grid[r][c] = 6; // Bomb
+                else grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length);
+            } else grid[r][c] = null;
         }
     }
     
+    nextBubble = generateBubble(false);
+    holdBubble = null;
     spawnBubble();
     flyingBubble = null;
 }
 
-/**
- * ==========================================
- * バブル関連のロジック
- * ==========================================
- */
-// 座標計算関連
-const rowHeight = CONFIG.radius * Math.sqrt(3);
-
-function getGridPos(r, c) {
-    const xOffset = (r % 2 === 0) ? CONFIG.radius : CONFIG.radius * 2;
-    return {
-        x: c * (CONFIG.radius * 2) + xOffset,
-        y: r * rowHeight + CONFIG.radius
-    };
+function generateBubble(isSpecialAllowed = true) {
+    let type = Math.floor(Math.random() * CONFIG.colors.length);
+    if (isSpecialAllowed && combo >= CONFIG.maxCombo) {
+        type = 6 + Math.floor(Math.random() * 4);
+        combo = 0; updateHUD();
+        spawnText(CONFIG.width/2, CONFIG.height - 100, "SPECIAL READY!", "#f1c40f", 60, 24);
+        playTone(600, 'square', 0.2, 0.1); setTimeout(() => playTone(800, 'square', 0.3, 0.1), 100);
+    }
+    return { x: CONFIG.width/2, y: CONFIG.height - 40, type: type };
 }
 
 function spawnBubble() {
-    currentBubble = {
-        x: CONFIG.width / 2,
-        y: CONFIG.height - CONFIG.radius,
-        color: Math.floor(Math.random() * CONFIG.colors.length)
-    };
+    currentBubble = nextBubble;
+    currentBubble.x = CONFIG.width/2; currentBubble.y = CONFIG.height - 40;
+    nextBubble = generateBubble(true);
+}
+
+function swapBubble() {
+    if (gameState !== 'playing' || flyingBubble !== null || !currentBubble) return;
+    if (holdBubble === null) {
+        holdBubble = { type: currentBubble.type };
+        spawnBubble();
+    } else {
+        let temp = currentBubble.type;
+        currentBubble.type = holdBubble.type;
+        holdBubble.type = temp;
+    }
+    playTone(400, 'triangle', 0.1);
+}
+
+/**
+ * ==========================================
+ * PHYSICS & LOGIC
+ * ==========================================
+ */
+const rowHeight = CONFIG.radius * Math.sqrt(3);
+function getGridPos(r, c) {
+    const xOffset = ((r + gridOffset) % 2 === 0) ? CONFIG.radius : CONFIG.radius * 2;
+    return { x: c * (CONFIG.radius * 2) + xOffset, y: r * rowHeight + CONFIG.radius + (gridOffset * rowHeight) };
 }
 
 function fireBubble() {
     if (gameState !== 'playing' || flyingBubble !== null || !currentBubble) return;
-
-    let dx = inputX - currentBubble.x;
-    let dy = inputY - currentBubble.y;
+    let dx = inputX - currentBubble.x; let dy = inputY - currentBubble.y;
     let angle = Math.atan2(dy, dx);
-    
-    // 真横や下へは撃てないように制限
-    if (angle > -0.1) angle = -0.1;
-    if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
+    if (angle > -0.1) angle = -0.1; if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
 
     flyingBubble = {
-        x: currentBubble.x,
-        y: currentBubble.y,
-        vx: Math.cos(angle) * CONFIG.speed,
-        vy: Math.sin(angle) * CONFIG.speed,
-        color: currentBubble.color
+        x: currentBubble.x, y: currentBubble.y,
+        vx: Math.cos(angle) * CONFIG.speed, vy: Math.sin(angle) * CONFIG.speed,
+        type: currentBubble.type
     };
-    
-    currentBubble = null; // 次の弾の生成はスナップ後に行う
+    currentBubble = null; bounceCount = 0;
+    playTone(300, 'sine', 0.1);
 }
 
-/**
- * ==========================================
- * 衝突・スナップ・マッチング判定
- * ==========================================
- */
 function updatePhysics() {
-    if (!flyingBubble) return;
-
-    flyingBubble.x += flyingBubble.vx;
-    flyingBubble.y += flyingBubble.vy;
-
-    // 左右の壁反射
-    if (flyingBubble.x - CONFIG.radius <= 0) {
-        flyingBubble.x = CONFIG.radius;
-        flyingBubble.vx *= -1;
-    } else if (flyingBubble.x + CONFIG.radius >= CONFIG.width) {
-        flyingBubble.x = CONFIG.width - CONFIG.radius;
-        flyingBubble.vx *= -1;
+    // 落下中バブルの物理演算（追加）
+    for (let i = fallingBubbles.length - 1; i >= 0; i--) {
+        let fb = fallingBubbles[i];
+        fb.x += fb.vx;
+        fb.vy += 0.5; // 重力
+        fb.y += fb.vy;
+        if (fb.y > CONFIG.height + 50) {
+            fallingBubbles.splice(i, 1); // 画面外に出たら削除
+        }
     }
 
-    let isCollision = false;
+    if (!flyingBubble) return;
 
-    // 天井衝突
-    if (flyingBubble.y - CONFIG.radius <= 0) {
-        isCollision = true;
-    } else {
-        // 既存バブルとの衝突
+    flyingBubble.x += flyingBubble.vx; flyingBubble.y += flyingBubble.vy;
+
+    if (flyingBubble.x - CONFIG.radius <= 0) {
+        flyingBubble.x = CONFIG.radius; flyingBubble.vx *= -1; bounceCount++;
+        playTone(600, 'triangle', 0.05);
+    } else if (flyingBubble.x + CONFIG.radius >= CONFIG.width) {
+        flyingBubble.x = CONFIG.width - CONFIG.radius; flyingBubble.vx *= -1; bounceCount++;
+        playTone(600, 'triangle', 0.05);
+    }
+
+    if (flyingBubble.type === 8) { // Thunder
+        let hit = false;
         for (let r = 0; r < CONFIG.rows; r++) {
-            let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
             for (let c = 0; c < colsInRow; c++) {
                 if (grid[r] && grid[r][c] !== null) {
                     let pos = getGridPos(r, c);
-                    let dx = flyingBubble.x - pos.x;
-                    let dy = flyingBubble.y - pos.y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    // めり込み防止のため少し小さめの判定
-                    if (dist < CONFIG.radius * 2 - 2) {
-                        isCollision = true;
-                        break;
+                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < CONFIG.radius * 2) {
+                        createParticles(pos.x, pos.y, getColor(grid[r][c]));
+                        grid[r][c] = null; hit = true; addScore(50);
                     }
+                }
+            }
+        }
+        if (hit) { playTone(150, 'sawtooth', 0.1); shakeTime = 5; }
+        if (flyingBubble.y <= 0) {
+            flyingBubble = null; dropFloatingBubbles(); checkTurnDrop(true); spawnBubble();
+        }
+        return;
+    }
+
+    let isCollision = false;
+    if (flyingBubble.y - CONFIG.radius <= (gridOffset > 0 ? gridOffset * rowHeight : 0)) {
+        isCollision = true;
+    } else {
+        for (let r = 0; r < CONFIG.rows; r++) {
+            let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            for (let c = 0; c < colsInRow; c++) {
+                if (grid[r] && grid[r][c] !== null) {
+                    let pos = getGridPos(r, c);
+                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < CONFIG.radius * 2 - 2) { isCollision = true; break; }
                 }
             }
             if (isCollision) break;
         }
     }
 
-    if (isCollision) {
-        snapToGrid();
-    }
+    if (isCollision) snapToGrid();
 }
 
 function snapToGrid() {
-    // 飛翔バブルに最も近い「配置可能な空きセル」を探す
-    let minDist = Infinity;
-    let bestR = -1;
-    let bestC = -1;
+    let minDist = Infinity; let bestR = -1; let bestC = -1;
 
     for (let r = 0; r < CONFIG.rows; r++) {
-        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
             if (grid[r] && grid[r][c] === null) {
-                // 天井、または他のバブルに隣接しているセルのみを候補とする
                 let isValid = (r === 0);
                 if (!isValid) {
                     let neighbors = getNeighbors(r, c);
                     isValid = neighbors.some(n => grid[n.r][n.c] !== null);
                 }
-
                 if (isValid) {
                     let pos = getGridPos(r, c);
-                    let dx = flyingBubble.x - pos.x;
-                    let dy = flyingBubble.y - pos.y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        bestR = r;
-                        bestC = c;
-                    }
+                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < minDist) { minDist = dist; bestR = r; bestC = c; }
                 }
             }
         }
     }
 
     if (bestR !== -1 && bestC !== -1) {
-        grid[bestR][bestC] = flyingBubble.color;
-        checkMatches(bestR, bestC, flyingBubble.color);
-        checkWinLose();
+        let type = flyingBubble.type;
+        grid[bestR][bestC] = type;
+        
+        let matchMade = false;
+        if (type === 6) { matchMade = true; explodeBomb(bestR, bestC); } 
+        else if (type === 9) { matchMade = true; explodeColorBomb(bestR, bestC); } 
+        else { matchMade = checkMatches(bestR, bestC, type); }
+
+        if (matchMade) {
+            combo++;
+            if (bounceCount > 0) { addScore(300); spawnText(flyingBubble.x, flyingBubble.y, "Trick Shot!", "#3498db"); }
+        } else {
+            combo = 0;
+        }
+        
+        checkTurnDrop(matchMade); checkWinLose();
     }
     
     flyingBubble = null;
@@ -363,305 +327,424 @@ function getNeighbors(r, c) {
     let neighbors = [];
     const dirsEven = [[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]];
     const dirsOdd  = [[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]];
-    const dirs = (r % 2 === 0) ? dirsEven : dirsOdd;
+    const dirs = ((r + gridOffset) % 2 === 0) ? dirsEven : dirsOdd;
 
     for (let d of dirs) {
-        let nr = r + d[0];
-        let nc = c + d[1];
+        let nr = r + d[0]; let nc = c + d[1];
         if (nr >= 0 && nr < CONFIG.rows) {
-            let colsInRow = (nr % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
-            if (nc >= 0 && nc < colsInRow) {
-                neighbors.push({r: nr, c: nc});
-            }
+            let colsInRow = ((nr + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            if (nc >= 0 && nc < colsInRow) neighbors.push({r: nr, c: nc});
         }
     }
     return neighbors;
 }
 
-function checkMatches(startR, startC, color) {
-    let matchGroup = [];
-    let visited = new Set();
-    let queue = [{r: startR, c: startC}];
-    visited.add(`${startR},${startC}`);
+/**
+ * ==========================================
+ * MATCHING & SPECIALS
+ * ==========================================
+ */
+function checkMatches(startR, startC, type) {
+    let matchGroup = []; let visited = new Set();
+    let queue = [{r: startR, c: startC}]; visited.add(`${startR},${startC}`);
+    let matchColor = type;
 
-    // 幅優先探索(BFS)で同色の繋がりを見つける
+    if (type === 7) {
+        let neighbors = getNeighbors(startR, startC);
+        for (let n of neighbors) {
+            let t = grid[n.r][n.c];
+            if (t !== null && t < 5) { matchColor = t; break; }
+        }
+        if (matchColor === 7) matchColor = 0;
+    }
+
     while (queue.length > 0) {
-        let curr = queue.shift();
-        matchGroup.push(curr);
-
+        let curr = queue.shift(); matchGroup.push(curr);
         let neighbors = getNeighbors(curr.r, curr.c);
         for (let n of neighbors) {
-            if (grid[n.r][n.c] === color && !visited.has(`${n.r},${n.c}`)) {
-                visited.add(`${n.r},${n.c}`);
-                queue.push(n);
+            let t = grid[n.r][n.c];
+            if ((t === matchColor || t === 7) && !visited.has(`${n.r},${n.c}`)) {
+                visited.add(`${n.r},${n.c}`); queue.push(n);
             }
         }
     }
 
-    // 3つ以上繋がっていたら消去
     if (matchGroup.length >= 3) {
+        let pitch = 400 + Math.min(combo * 100, 800);
+        playTone(pitch, 'sine', 0.15);
+        
         for (let b of matchGroup) {
+            let pos = getGridPos(b.r, b.c);
+            createParticles(pos.x, pos.y, getColor(grid[b.r][b.c]));
             grid[b.r][b.c] = null;
         }
-        addScore(matchGroup.length * 10);
+        addScore(matchGroup.length * 20);
+        // ※「〇連鎖！」テキストの表示を削除しました
+        
+        triggerChainBombs(matchGroup);
         dropFloatingBubbles();
+        return true;
+    }
+    return false;
+}
+
+function triggerChainBombs(clearedBubbles) {
+    let triggered = true;
+    while (triggered) {
+        triggered = false;
+        let bombsToExplode = [];
+        for (let b of clearedBubbles) {
+            let neighbors = getNeighbors(b.r, b.c);
+            for (let n of neighbors) {
+                if (grid[n.r][n.c] === 6) bombsToExplode.push(n);
+            }
+        }
+        let uniqueBombs = Array.from(new Set(bombsToExplode.map(b => `${b.r},${b.c}`))).map(s => {
+            let [r, c] = s.split(','); return {r: parseInt(r), c: parseInt(c)};
+        });
+        
+        if (uniqueBombs.length > 0) {
+            clearedBubbles = [];
+            for (let b of uniqueBombs) {
+                let blownUp = explodeBomb(b.r, b.c, false);
+                clearedBubbles.push(...blownUp);
+            }
+            triggered = true;
+        }
     }
 }
 
-function dropFloatingBubbles() {
-    let connected = new Set();
-    let queue = [];
-
-    // 天井(r=0)に接しているバブルをキューに追加
-    for (let c = 0; c < CONFIG.cols; c++) {
-        if (grid[0] && grid[0][c] !== null) {
-            connected.add(`0,${c}`);
-            queue.push({r: 0, c: c});
+function explodeBomb(r, c, triggerDrop = true) {
+    playTone(100, 'square', 0.3, 0.2); shakeTime = 10;
+    let blownUp = [];
+    let area = [{r, c}, ...getNeighbors(r, c)];
+    let extendedArea = [...area];
+    for (let n of area) extendedArea.push(...getNeighbors(n.r, n.c));
+    
+    for (let n of extendedArea) {
+        if (n.r >= 0 && n.r < CONFIG.rows && grid[n.r] && grid[n.r][n.c] !== null) {
+            let pos = getGridPos(n.r, n.c);
+            createParticles(pos.x, pos.y, getColor(grid[n.r][n.c]));
+            blownUp.push({r: n.r, c: n.c, type: grid[n.r][n.c]});
+            grid[n.r][n.c] = null;
         }
     }
+    addScore(blownUp.length * 30);
+    if (triggerDrop) dropFloatingBubbles();
+    return blownUp;
+}
 
-    // BFSで天井から繋がっているすべてのバブルをマーク
+function explodeColorBomb(r, c) {
+    let targetColor = -1;
+    let neighbors = getNeighbors(r, c);
+    for (let n of neighbors) {
+        let t = grid[n.r][n.c];
+        if (t !== null && t < 5) { targetColor = t; break; }
+    }
+    if (targetColor === -1) targetColor = Math.floor(Math.random()*5);
+
+    playTone(800, 'sawtooth', 0.4, 0.1); shakeTime = 15;
+    let count = 0;
+    
+    grid[r][c] = null;
+    let pos = getGridPos(r, c); createParticles(pos.x, pos.y, getColor(9));
+
+    for (let row = 0; row < CONFIG.rows; row++) {
+        let colsInRow = ((row + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let col = 0; col < colsInRow; col++) {
+            if (grid[row][col] === targetColor) {
+                let p = getGridPos(row, col);
+                createParticles(p.x, p.y, getColor(targetColor));
+                grid[row][col] = null; count++;
+            }
+        }
+    }
+    addScore(count * 50); spawnText(CONFIG.width/2, CONFIG.height/2, "COLOR WIPE!", getColor(targetColor), 60, 30);
+    dropFloatingBubbles();
+}
+
+function dropFloatingBubbles() {
+    let connected = new Set(); let queue = [];
+
+    for (let c = 0; c < CONFIG.cols; c++) {
+        if (grid[0] && grid[0][c] !== null) { connected.add(`0,${c}`); queue.push({r: 0, c: c}); }
+    }
+
     while (queue.length > 0) {
         let curr = queue.shift();
         let neighbors = getNeighbors(curr.r, curr.c);
         for (let n of neighbors) {
             if (grid[n.r][n.c] !== null && !connected.has(`${n.r},${n.c}`)) {
-                connected.add(`${n.r},${n.c}`);
-                queue.push(n);
+                connected.add(`${n.r},${n.c}`); queue.push(n);
             }
         }
     }
 
-    // マークされていない（浮いている）バブルを消去
     let droppedCount = 0;
     for (let r = 0; r < CONFIG.rows; r++) {
-        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
             if (grid[r] && grid[r][c] !== null && !connected.has(`${r},${c}`)) {
-                grid[r][c] = null;
-                droppedCount++;
+                let pos = getGridPos(r, c);
+                // 消去ではなく、落下アニメーション用の配列に追加する
+                fallingBubbles.push({
+                    x: pos.x, y: pos.y, type: grid[r][c],
+                    vx: (Math.random() - 0.5) * 6, vy: (Math.random() * -3) - 1
+                });
+                grid[r][c] = null; droppedCount++;
             }
         }
     }
     
+    // まとめて消したときの褒め演出（文字サイズや揺れを大きく）
     if (droppedCount > 0) {
-        addScore(droppedCount * 20); // 落下させた場合はボーナス
+        addScore(droppedCount * 50);
+        if (droppedCount >= 10) { 
+            shakeTime = 15; playTone(200, 'square', 0.4); 
+            spawnText(CONFIG.width/2, CONFIG.height/2, "AMAZING!!", "#9b59b6", 60, 45); 
+        } else if (droppedCount >= 5) { 
+            shakeTime = 8; playTone(250, 'square', 0.2); 
+            spawnText(CONFIG.width/2, CONFIG.height/2, "GREAT!", "#2ecc71", 50, 30); 
+        }
     }
 }
 
+function checkTurnDrop(matchMade) {
+    if (!matchMade) turnCounter++;
+    if (turnCounter >= CONFIG.turnsToDrop) {
+        turnCounter = 0; gridOffset++; 
+        let newRow = []; let colsInRow = (gridOffset % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for(let c=0; c<colsInRow; c++) {
+            let rand = Math.random();
+            if (rand < 0.05) newRow[c] = 5; 
+            else newRow[c] = Math.floor(Math.random() * 5); 
+        }
+        grid.unshift(newRow); grid.pop(); 
+        shakeTime = 15; playTone(100, 'sawtooth', 0.5, 0.3);
+        document.getElementById('turn-warning').style.display = 'none';
+    } else if (turnCounter === CONFIG.turnsToDrop - 1) {
+        document.getElementById('turn-warning').style.display = 'block';
+    } else {
+        document.getElementById('turn-warning').style.display = 'none';
+    }
+    updateHUD();
+}
+
 function checkWinLose() {
-    // 勝利判定: 盤面にバブルがない
-    let hasBubble = false;
+    let hasBubble = false; let bottomWarning = false;
     for (let r = 0; r < CONFIG.rows; r++) {
-        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
-            if (grid[r] && grid[r][c] !== null) hasBubble = true;
+            if (grid[r] && grid[r][c] !== null) {
+                hasBubble = true;
+                if (r >= CONFIG.rows - 2) bottomWarning = true; 
+            }
         }
     }
-
-    if (!hasBubble) {
-        endGame('CLEAR!');
-        return;
-    }
-
-    // 敗北判定: 最下段(画面外に近い行)にバブルが存在する
-    let bottomRowIndex = CONFIG.rows - 1;
-    let colsInRow = (bottomRowIndex % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
-    for (let c = 0; c < colsInRow; c++) {
-        if (grid[bottomRowIndex] && grid[bottomRowIndex][c] !== null) {
-            endGame('GAME OVER');
-            return;
-        }
-    }
+    if (!hasBubble) { endGame('CLEAR!'); return; }
+    if (bottomWarning) { endGame('GAME OVER'); return; }
 }
 
 /**
  * ==========================================
- * 描画関連 (画像フォールバック対応)
+ * EFFECTS & RENDERING
  * ==========================================
  */
-function drawBubble(x, y, colorIndex) {
-    const img = loadedImages[colorIndex];
-    const r = CONFIG.radius;
+function getColor(type) {
+    if (type < 5) return CONFIG.colors[type];
+    if (type === 5) return '#7f8c8d'; 
+    if (type === 6) return '#222';    
+    if (type === 7) return 'linear-gradient'; 
+    if (type === 8) return '#f1c40f'; 
+    if (type === 9) return '#e84393'; 
+    return '#fff';
+}
 
-    if (img && img.complete && img.naturalWidth > 0) {
-        // 画像が存在し読み込まれている場合：アスペクト比を維持して描画領域に収める
-        ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
-    } else {
-        // フォールバック処理：CSSライクなCanvas図形で代用
-        ctx.beginPath();
-        ctx.arc(x, y, r - 1, 0, Math.PI * 2);
-        ctx.fillStyle = CONFIG.colors[colorIndex];
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+function createParticles(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+        particles.push({
+            x: x, y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10 - 2,
+            color: color, life: 1.0
+        });
+    }
+}
 
-        // ハイライト（立体感）
-        ctx.beginPath();
-        ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.25, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fill();
+// 引数に size を追加
+function spawnText(x, y, text, color, maxLife = 40, size = 20) {
+    floatTexts.push({x, y, text, color, life: maxLife, maxLife, size});
+}
+
+function drawBubbleEx(x, y, type, radius) {
+    ctx.beginPath(); ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
+    if (type === 7) { 
+        let grad = ctx.createLinearGradient(x-radius, y-radius, x+radius, y+radius);
+        grad.addColorStop(0, "red"); grad.addColorStop(0.33, "yellow"); grad.addColorStop(0.66, "green"); grad.addColorStop(1, "blue");
+        ctx.fillStyle = grad;
+    } else { ctx.fillStyle = getColor(type); }
+    ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+
+    if (type < 5 || type === 7) {
+        ctx.beginPath(); ctx.arc(x - radius*0.3, y - radius*0.3, radius*0.25, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+    } else if (type === 5) { 
+        ctx.fillStyle = '#95a5a6'; ctx.fillRect(x-radius*0.4, y-radius*0.4, radius*0.8, radius*0.8);
+    } else if (type === 6) { 
+        ctx.fillStyle = 'red'; ctx.font = "bold 14px Arial"; ctx.fillText("B", x-5, y+5);
+    } else if (type === 8) { 
+        ctx.fillStyle = '#fff'; ctx.font = "bold 16px Arial"; ctx.fillText("⚡", x-8, y+6);
+    } else if (type === 9) { 
+        ctx.fillStyle = '#fff'; ctx.font = "bold 14px Arial"; ctx.fillText("C", x-5, y+5);
     }
 }
 
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // --- 画面揺れのバグ修正：必ず save() と restore() で囲み、ズレを残さない ---
+    ctx.save();
+    if (shakeTime > 0) {
+        ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10);
+        shakeTime--;
+    }
 
-    // グリッド上の固定バブルを描画
+    // グリッド上のバブル
     for (let r = 0; r < CONFIG.rows; r++) {
-        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
             if (grid[r] && grid[r][c] !== null) {
                 let pos = getGridPos(r, c);
-                drawBubble(pos.x, pos.y, grid[r][c]);
+                drawBubbleEx(pos.x, pos.y, grid[r][c], CONFIG.radius);
             }
         }
     }
 
-    // 飛翔中のバブルを描画
-    if (flyingBubble) {
-        drawBubble(flyingBubble.x, flyingBubble.y, flyingBubble.color);
+    // 飛翔中バブル
+    if (flyingBubble) drawBubbleEx(flyingBubble.x, flyingBubble.y, flyingBubble.type, CONFIG.radius);
+
+    // 落下中バブル（追加実装分）
+    for (let fb of fallingBubbles) {
+        drawBubbleEx(fb.x, fb.y, fb.type, CONFIG.radius);
     }
 
-    // 発射台と待機バブル、および照準線の描画
-    if (currentBubble && gameState === 'playing') {
-        // 照準線
-        if (isPressing) {
-            ctx.beginPath();
-            ctx.moveTo(currentBubble.x, currentBubble.y);
-            let dx = inputX - currentBubble.x;
-            let dy = inputY - currentBubble.y;
-            let angle = Math.atan2(dy, dx);
-            if (angle > -0.1) angle = -0.1;
-            if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
-            
-            ctx.lineTo(currentBubble.x + Math.cos(angle) * 100, currentBubble.y + Math.sin(angle) * 100);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.setLineDash([]);
+    // UI & 照準
+    if (gameState === 'playing') {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, CONFIG.height - 80, CONFIG.width, 80);
+        ctx.fillStyle = '#fff'; ctx.font = "12px Arial";
+        ctx.fillText("NEXT", CONFIG.width/2 + 50, CONFIG.height - 55);
+        ctx.fillText("HOLD (Tap area to swap)", 20, CONFIG.height - 55);
+
+        if (nextBubble) drawBubbleEx(CONFIG.width/2 + 65, CONFIG.height - 30, nextBubble.type, 12);
+        if (holdBubble) drawBubbleEx(40, CONFIG.height - 30, holdBubble.type, 15);
+        else { ctx.strokeStyle = '#aaa'; ctx.strokeRect(25, CONFIG.height - 45, 30, 30); }
+
+        if (currentBubble) {
+            if (isPressing && inputY < CONFIG.height - 80) { 
+                ctx.beginPath(); ctx.moveTo(currentBubble.x, currentBubble.y);
+                let dx = inputX - currentBubble.x; let dy = inputY - currentBubble.y;
+                let angle = Math.atan2(dy, dx);
+                if (angle > -0.1) angle = -0.1; if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
+                ctx.lineTo(currentBubble.x + Math.cos(angle)*200, currentBubble.y + Math.sin(angle)*200);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+                ctx.stroke(); ctx.setLineDash([]);
+            }
+            drawBubbleEx(currentBubble.x, currentBubble.y, currentBubble.type, CONFIG.radius);
         }
-
-        drawBubble(currentBubble.x, currentBubble.y, currentBubble.color);
     }
+
+    // パーティクル
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.5;
+        p.life -= 0.02;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color === 'linear-gradient' ? '#fff' : p.color;
+        ctx.fillRect(p.x, p.y, 4, 4);
+        ctx.globalAlpha = 1.0;
+    }
+
+    // ポップアップテキスト（サイズ可変対応）
+    for (let i = floatTexts.length - 1; i >= 0; i--) {
+        let t = floatTexts[i];
+        t.y -= 1; t.life -= 1;
+        if (t.life <= 0) { floatTexts.splice(i, 1); continue; }
+        ctx.globalAlpha = t.life / t.maxLife;
+        ctx.fillStyle = t.color; 
+        ctx.font = `bold ${t.size}px 'Segoe UI'`; // サイズを動的に反映
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        ctx.strokeText(t.text, t.x - (t.size), t.y); ctx.fillText(t.text, t.x - (t.size), t.y);
+        ctx.globalAlpha = 1.0;
+    }
+
+    // 揺れの復元を必ず実行する
+    ctx.restore();
 }
 
 function gameLoop() {
-    if (gameState === 'playing') {
-        updatePhysics();
-    }
+    if (gameState === 'playing') updatePhysics();
     drawGame();
     requestAnimationFrame(gameLoop);
 }
 
 /**
  * ==========================================
- * UI・画面遷移・イベント制御
+ * UI & INPUTS
  * ==========================================
  */
-const screens = {
-    title: document.getElementById('screen-title'),
-    result: document.getElementById('screen-result'),
-    hud: document.getElementById('hud')
-};
+const screens = { title: document.getElementById('screen-title'), result: document.getElementById('screen-result'), hud: document.getElementById('hud') };
 
 function changeState(newState) {
     gameState = newState;
-    screens.title.classList.add('hidden');
-    screens.result.classList.add('hidden');
-    screens.hud.classList.add('hidden');
-
-    if (newState === 'title') {
-        screens.title.classList.remove('hidden');
-        document.getElementById('title-highscore').innerText = highScore;
-    } else if (newState === 'playing') {
-        screens.hud.classList.remove('hidden');
-    } else if (newState === 'result') {
-        screens.result.classList.remove('hidden');
-    }
+    screens.title.classList.add('hidden'); screens.result.classList.add('hidden'); screens.hud.classList.add('hidden');
+    if (newState === 'title') { screens.title.classList.remove('hidden'); document.getElementById('title-highscore').innerText = highScore; }
+    else if (newState === 'playing') screens.hud.classList.remove('hidden');
+    else if (newState === 'result') screens.result.classList.remove('hidden');
 }
 
-function addScore(points) {
-    score += points;
-    updateHUD();
-}
-
+function addScore(points) { score += points; updateHUD(); }
 function updateHUD() {
     document.getElementById('hud-score').innerText = score;
     document.getElementById('hud-highscore').innerText = Math.max(score, highScore);
+    document.getElementById('combo-bar').style.width = `${(combo / CONFIG.maxCombo) * 100}%`;
 }
-
 function endGame(resultText) {
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('bubbleHighScore', highScore);
-    }
-    
+    if (score > highScore) { highScore = score; localStorage.setItem('ultBubbleHigh', highScore); }
     document.getElementById('result-title').innerText = resultText;
-    document.getElementById('result-score').innerText = score;
-    document.getElementById('result-highscore').innerText = highScore;
+    document.getElementById('result-score').innerText = score; document.getElementById('result-highscore').innerText = highScore;
     changeState('result');
 }
 
-// ボタンイベント
-document.getElementById('btn-start').addEventListener('click', () => {
-    initGame();
-    changeState('playing');
-});
+document.getElementById('btn-start').addEventListener('click', () => { initAudio(); initGame(); changeState('playing'); });
+document.getElementById('btn-retry').addEventListener('click', () => { initGame(); changeState('playing'); });
 
-document.getElementById('btn-retry').addEventListener('click', () => {
-    initGame();
-    changeState('playing');
-});
-
-// 入力座標の取得（レスポンシブなCanvasのスケーリングを考慮）
 function updateInputPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-    inputX = (clientX - rect.left) * scaleX;
-    inputY = (clientY - rect.top) * scaleY;
+    const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+    inputX = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
+    inputY = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
 }
 
-// マウス・タッチイベント設定 (passive: false で e.preventDefault() を許可)
-const eventOptions = { passive: false };
-
-function handleInputStart(e) {
+const evOpts = { passive: false };
+function handleStart(e) {
     if(e.type === 'touchstart') e.preventDefault();
     if (gameState !== 'playing') return;
-    isPressing = true;
     updateInputPos(e);
+    if (inputY > CONFIG.height - 80) { swapBubble(); isPressing = false; }
+    else { isPressing = true; }
 }
-
-function handleInputMove(e) {
-    if(e.type === 'touchmove') e.preventDefault(); // スマホのスクロールを防止
-    if (!isPressing) return;
-    updateInputPos(e);
+function handleMove(e) {
+    if(e.type === 'touchmove') e.preventDefault();
+    if (!isPressing) return; updateInputPos(e);
 }
-
-function handleInputEnd(e) {
+function handleEnd(e) {
     if(e.type === 'touchend') e.preventDefault();
     if (!isPressing) return;
-    isPressing = false;
-    fireBubble();
+    isPressing = false; fireBubble();
 }
 
-window.addEventListener('mousedown', handleInputStart, eventOptions);
-window.addEventListener('mousemove', handleInputMove, eventOptions);
-window.addEventListener('mouseup', handleInputEnd, eventOptions);
+window.addEventListener('mousedown', handleStart, evOpts); window.addEventListener('mousemove', handleMove, evOpts); window.addEventListener('mouseup', handleEnd, evOpts);
+window.addEventListener('touchstart', handleStart, evOpts); window.addEventListener('touchmove', handleMove, evOpts); window.addEventListener('touchend', handleEnd, evOpts);
+window.addEventListener('contextmenu', e => { e.preventDefault(); swapBubble(); });
 
-window.addEventListener('touchstart', handleInputStart, eventOptions);
-window.addEventListener('touchmove', handleInputMove, eventOptions);
-window.addEventListener('touchend', handleInputEnd, eventOptions);
-
-// 起動処理
-preloadImages();
 document.getElementById('title-highscore').innerText = highScore;
 changeState('title');
 requestAnimationFrame(gameLoop);

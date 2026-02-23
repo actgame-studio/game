@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Merge & Jam 6x6</title>
+    <style>
+        :root {
+            --bg-color: #faf8ef;
+            --text-color: #776e65;
+            --board-bg: #bbada0;
+            --primary-btn: #8f7a66;
+            --primary-btn-hover: #9f8b77;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
+            z-index: 10;
+        }
+        .screen.active { display: flex; }
+
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-align: center; }
+        .score-box { background: var(--board-bg); color: white; padding: 10px 20px; border-radius: 6px; font-weight: bold; text-align: center; margin-bottom: 20px;}
+        .score-label { font-size: 0.8rem; text-transform: uppercase; }
+        .score-value { font-size: 1.5rem; }
+
+        button {
+            background-color: var(--primary-btn);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        button:hover { background-color: var(--primary-btn-hover); }
+
+        /* ゲーム画面のレイアウト修正：中央に大きく配置 */
+        #game-screen {
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 15px;
+        }
+
+        /* 盤面のレスポンシブ対応（画面サイズに合わせて最大化） */
+        .canvas-container {
+            width: 95vmin; /* 画面の短い辺の95% */
+            height: 95vmin;
+            max-width: 600px; /* PCでの最大サイズ */
+            max-height: 600px;
+            background-color: var(--board-bg);
+            border-radius: 8px;
+            padding: 1%;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .instruction {
+            margin-top: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            color: #d9534f; /* エラーなどが目立つように赤系 */
+            height: 1.5em; /* メッセージの高さ固定でガタつき防止 */
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="title-screen" class="screen active">
+        <h1>Merge & Jam</h1>
+        <div class="score-box">
+            <div class="score-label">HIGH SCORE</div>
+            <div class="score-value" id="title-highscore">0</div>
+        </div>
+        <button id="start-btn">ゲームスタート</button>
+        <p class="instruction" style="color: #888;">
+            パネルをタップして選択しスワイプで移動。<br>
+            同じ数・サイズのパネルを合体させよう！<br>
+            ※512以上を作ると巨大化して空き地が減ります。
+        </p>
+    </div>
+
+    <div id="game-screen">
+        <div class="header">
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: var(--text-color);">6x6</div>
+            </div>
+            <div class="score-box" style="margin-bottom: 0;">
+                <div class="score-label">SCORE</div>
+                <div class="score-value" id="game-score">0</div>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="game-canvas"></canvas>
+        </div>
+        <div class="instruction" id="status-msg">パネルを選択してください</div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1 id="result-title">Game Over</h1>
+        <div class="score-box">
+            <div class="score-label">FINAL SCORE</div>
+            <div class="score-value" id="result-score">0</div>
+        </div>
+        <button id="retry-btn">もう一度遊ぶ</button>
+    </div>
+</div>
+
+<script>
+/**
+ * 設定の一元化
+ */
+const CONFIG = {
+    gridSize: 6,
+    cellSize: 80, // Canvasの内部描画用ベースサイズ
+    gap: 8,
+    targetValue: 2048,
+    
+    sizeMap: {
+        2: 1, 4: 1, 8: 1, 16: 1, 32: 1, 64: 1, 128: 1, 256: 1, // 1x1
+        512: 2, 1024: 2,                                       // 2x2
+        2048: 3                                                // 3x3
+    },
+    
+    // 【修正】合計2048ピッタリ。これで空きマスが初期10マスになります！
+    initialPool: [
+        512, 512,       // 2x2が2つ
+        256, 256,       // 1x1
+        128, 128,       // 1x1
+        64, 64,         // 1x1
+        32, 32,         // 1x1
+        16, 16,         // 1x1
+        8, 8,           // 1x1
+        4, 4,           // 1x1
+        2, 2, 2, 2      // 1x1が4つ
+    ],
+
+    imagePaths: {
+        2: "sprite/2.png", 4: "sprite/4.png", 8: "sprite/8.png", 16: "sprite/16.png",
+        32: "sprite/32.png", 64: "sprite/64.png", 128: "sprite/128.png", 256: "sprite/256.png",
+        512: "sprite/512.png", 1024: "sprite/1024.png", 2048: "sprite/2048.png"
+    },
+    colors: {
+        empty: "rgba(238, 228, 218, 0.35)",
+        2: "#eee4da", 4: "#ede0c8", 8: "#f2b179", 16: "#f59563",
+        32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72", 256: "#edcc61",
+        512: "#edc850", 1024: "#edc53f", 2048: "#edc22e"
+    }
+};
+
+let state = {
+    tiles: [],
+    score: 0,
+    highScore: localStorage.getItem('mergeJamHighScore') || 0,
+    selectedId: null,
+    isGameOver: false,
+    tileCounter: 0
+};
+
+let loadedImages = {};
+let canvas, ctx;
+let animationFrameId;
+
+function init() {
+    canvas = document.getElementById('game-canvas');
+    ctx = canvas.getContext('2d');
+    
+    // Canvas内部の解像度は高めに設定（表示サイズはCSSの100%に依存）
+    let boardPx = CONFIG.gap + (CONFIG.cellSize + CONFIG.gap) * CONFIG.gridSize;
+    canvas.width = boardPx;
+    canvas.height = boardPx;
+    document.getElementById('title-highscore').innerText = state.highScore;
+
+    for (let key in CONFIG.imagePaths) {
+        let img = new Image();
+        img.src = CONFIG.imagePaths[key];
+        img.onload = () => { loadedImages[key] = img; };
+    }
+
+    bindEvents();
+    renderLoop();
+}
+
+function bindEvents() {
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('retry-btn').addEventListener('click', () => {
+        switchScreen('title-screen');
+    });
+
+    let startX = 0, startY = 0;
+    
+    // タッチ＆マウス座標の取得補助関数（レスポンシブ対応）
+    function getGridCoords(clientX, clientY) {
+        let rect = canvas.getBoundingClientRect();
+        // 実際の表示サイズとCanvas内部解像度の比率を計算
+        let scaleX = canvas.width / rect.width;
+        let scaleY = canvas.height / rect.height;
+        let px = (clientX - rect.left) * scaleX;
+        let py = (clientY - rect.top) * scaleY;
+        return { px, py };
+    }
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        let coords = getGridCoords(e.touches[0].clientX, e.touches[0].clientY);
+        startX = coords.px; startY = coords.py;
+        handleSelect(startX, startY);
+    }, {passive: false});
+
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        let coords = getGridCoords(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        handleSwipe(startX, startY, coords.px, coords.py);
+    }, {passive: false});
+
+    let isMouseDown = false;
+    canvas.addEventListener('mousedown', (e) => {
+        let coords = getGridCoords(e.clientX, e.clientY);
+        startX = coords.px; startY = coords.py;
+        isMouseDown = true;
+        handleSelect(startX, startY);
+    });
+    canvas.addEventListener('mouseup', (e) => {
+        if(!isMouseDown) return;
+        isMouseDown = false;
+        let coords = getGridCoords(e.clientX, e.clientY);
+        handleSwipe(startX, startY, coords.px, coords.py);
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if(state.isGameOver || state.selectedId === null) return;
+        let dx = 0, dy = 0;
+        if(e.key === 'ArrowUp') dy = -1;
+        else if(e.key === 'ArrowDown') dy = 1;
+        else if(e.key === 'ArrowLeft') dx = -1;
+        else if(e.key === 'ArrowRight') dx = 1;
+        
+        if(dx !== 0 || dy !== 0) {
+            e.preventDefault();
+            processMove(state.selectedId, dx, dy);
+        }
+    });
+}
+
+function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    if (screenId !== 'game-screen') document.getElementById(screenId).classList.add('active');
+}
+
+function startGame() {
+    state.tiles = [];
+    state.score = 0;
+    state.selectedId = null;
+    state.isGameOver = false;
+    updateScore();
+    document.getElementById('status-msg').innerText = "パネルを選択してください";
+    document.getElementById('status-msg').style.color = "#888"; // 通常色
+    
+    let sortedPool = [...CONFIG.initialPool].sort((a,b) => b - a);
+    sortedPool.forEach(val => {
+        let size = CONFIG.sizeMap[val] || 1;
+        let placed = false;
+        let attempts = 0;
+        while(!placed && attempts < 2000) {
+            let gx = Math.floor(Math.random() * (CONFIG.gridSize - size + 1));
+            let gy = Math.floor(Math.random() * (CONFIG.gridSize - size + 1));
+            if(canPlace(gx, gy, size, null)) {
+                addTile(gx, gy, val);
+                placed = true;
+            }
+            attempts++;
+        }
+    });
+    switchScreen('game-screen');
+}
+
+function addTile(gx, gy, val) {
+    let size = CONFIG.sizeMap[val] || 1;
+    let px = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap);
+    let py = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap);
+    state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, size });
+}
+
+function canPlace(gx, gy, size, ignoreId) {
+    if (gx < 0 || gy < 0 || gx + size > CONFIG.gridSize || gy + size > CONFIG.gridSize) return false;
+    for (let t of state.tiles) {
+        if (t.id === ignoreId) continue;
+        if (gx < t.gx + t.size && gx + size > t.gx && gy < t.gy + t.size && gy + size > t.gy) return false;
+    }
+    return true;
+}
+
+function handleSelect(px, py) {
+    if(state.isGameOver) return;
+    let gx = Math.floor(px / (CONFIG.cellSize + CONFIG.gap));
+    let gy = Math.floor(py / (CONFIG.cellSize + CONFIG.gap));
+    
+    let clickedTile = state.tiles.find(t => gx >= t.gx && gx < t.gx + t.size && gy >= t.gy && gy < t.gy + t.size);
+    if(clickedTile) {
+        state.selectedId = clickedTile.id;
+        document.getElementById('status-msg').innerText = "スワイプまたは矢印キーで移動";
+        document.getElementById('status-msg').style.color = "#888";
+    } else {
+        state.selectedId = null;
+        document.getElementById('status-msg').innerText = "パネルを選択してください";
+        document.getElementById('status-msg').style.color = "#888";
+    }
+}
+
+function handleSwipe(startX, startY, endX, endY) {
+    if(state.isGameOver || state.selectedId === null) return;
+    let dx = endX - startX, dy = endY - startY;
+    if(Math.max(Math.abs(dx), Math.abs(dy)) > 20) {
+        let moveX = 0, moveY = 0;
+        if(Math.abs(dx) > Math.abs(dy)) moveX = dx > 0 ? 1 : -1;
+        else moveY = dy > 0 ? 1 : -1;
+        processMove(state.selectedId, moveX, moveY);
+    }
+}
+
+function processMove(tileId, dx, dy) {
+    let tile = state.tiles.find(t => t.id === tileId);
+    if(!tile) return;
+
+    let targetGx = tile.gx + dx, targetGy = tile.gy + dy;
+    if(targetGx < 0 || targetGy < 0 || targetGx + tile.size > CONFIG.gridSize || targetGy + tile.size > CONFIG.gridSize) return;
+
+    let collidingTiles = [];
+    for (let t of state.tiles) {
+        if(t.id === tile.id) continue;
+        if(targetGx < t.gx + t.size && targetGx + tile.size > t.gx && targetGy < t.gy + t.size && targetGy + tile.size > t.gy) {
+            collidingTiles.push(t);
+        }
+    }
+
+    // 毎回メッセージをリセット
+    document.getElementById('status-msg').innerText = "スワイプまたは矢印キーで移動";
+    document.getElementById('status-msg').style.color = "#888";
+
+    if(collidingTiles.length === 0) {
+        tile.gx = targetGx; tile.gy = targetGy;
+    } else if (collidingTiles.length === 1) {
+        let target = collidingTiles[0];
+        let isAligned = false;
+        if(dx !== 0 && tile.gy === target.gy && tile.size === target.size) isAligned = true;
+        if(dy !== 0 && tile.gx === target.gx && tile.size === target.size) isAligned = true;
+
+        if(isAligned && tile.val === target.val) {
+            let newVal = tile.val * 2;
+            let newSize = CONFIG.sizeMap[newVal] || tile.size;
+            
+            let mergeGx = (dx > 0 || dy > 0) ? target.gx : tile.gx;
+            let mergeGy = (dx > 0 || dy > 0) ? target.gy : tile.gy;
+
+            let tempTiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
+            let canGrow = true;
+            if(mergeGx + newSize > CONFIG.gridSize || mergeGy + newSize > CONFIG.gridSize) canGrow = false;
+            for(let t of tempTiles) {
+                if(mergeGx < t.gx + t.size && mergeGx + newSize > t.gx && mergeGy < t.gy + t.size && mergeGy + newSize > t.gy) canGrow = false;
+            }
+
+            if(canGrow) {
+                state.score += newVal;
+                updateScore();
+                state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
+                addTile(mergeGx, mergeGy, newVal);
+                state.selectedId = state.tiles[state.tiles.length - 1].id;
+
+                if(newVal === CONFIG.targetValue) endGame(true);
+            } else {
+                let msg = document.getElementById('status-msg');
+                msg.innerText = "巨大化するスペースがありません！";
+                msg.style.color = "#d9534f"; // 赤色で強調
+            }
+        }
+    }
+    checkStuck();
+}
+
+function checkStuck() {
+    let canMoveAny = false;
+    for(let t of state.tiles) {
+        for(let dir of [[0,-1], [0,1], [-1,0], [1,0]]) {
+            let tgx = t.gx + dir[0], tgy = t.gy + dir[1];
+            if(tgx >= 0 && tgy >= 0 && tgx + t.size <= CONFIG.gridSize && tgy + t.size <= CONFIG.gridSize) {
+                let cols = state.tiles.filter(ot => ot.id !== t.id && tgx < ot.gx + ot.size && tgx + t.size > ot.gx && tgy < ot.gy + t.size && tgy + t.size > ot.gy);
+                if(cols.length === 0 || (cols.length === 1 && cols[0].val === t.val && cols[0].size === t.size)) canMoveAny = true; 
+            }
+        }
+    }
+    if(!canMoveAny) endGame(false);
+}
+
+function updateScore() {
+    document.getElementById('game-score').innerText = state.score;
+    if(state.score > state.highScore) {
+        state.highScore = state.score;
+        localStorage.setItem('mergeJamHighScore', state.highScore);
+    }
+}
+
+function endGame(isWin) {
+    state.isGameOver = true;
+    setTimeout(() => {
+        document.getElementById('result-title').innerText = isWin ? "Clear!" : "Game Over...";
+        document.getElementById('result-score').innerText = state.score;
+        document.getElementById('title-highscore').innerText = state.highScore;
+        switchScreen('result-screen');
+    }, 800);
+}
+
+function renderLoop() {
+    ctx.fillStyle = CONFIG.colors.empty;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for(let y=0; y<CONFIG.gridSize; y++) {
+        for(let x=0; x<CONFIG.gridSize; x++) {
+            let px = CONFIG.gap + x * (CONFIG.cellSize + CONFIG.gap);
+            let py = CONFIG.gap + y * (CONFIG.cellSize + CONFIG.gap);
+            ctx.fillStyle = "rgba(187, 173, 160, 0.5)";
+            ctx.fillRect(px, py, CONFIG.cellSize, CONFIG.cellSize);
+        }
+    }
+
+    state.tiles.forEach(tile => {
+        let targetPx = CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap);
+        let targetPy = CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap);
+        
+        tile.px += (targetPx - tile.px) * 0.3;
+        tile.py += (targetPy - tile.py) * 0.3;
+
+        let drawSize = tile.size * CONFIG.cellSize + (tile.size - 1) * CONFIG.gap;
+        let img = loadedImages[tile.val];
+
+        if(img && img.complete && img.naturalWidth !== 0) {
+            ctx.drawImage(img, tile.px, tile.py, drawSize, drawSize);
+        } else {
+            ctx.fillStyle = CONFIG.colors[tile.val] || "#3c3a32";
+            ctx.fillRect(tile.px, tile.py, drawSize, drawSize);
+            ctx.fillStyle = (tile.val <= 4) ? "#776e65" : "#f9f6f2";
+            let fontSize = CONFIG.cellSize * 0.5 * (tile.size * 0.8);
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2);
+        }
+
+        if(state.selectedId === tile.id) {
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(tile.px, tile.py, drawSize, drawSize);
+        }
+    });
+
+    animationFrameId = requestAnimationFrame(renderLoop);
+}
+
+init();
+</script>
+</body>
+</html>

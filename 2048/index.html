@@ -8,7 +8,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap');
 
         :root {
-            --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
             --glass-bg: rgba(255, 255, 255, 0.6);
             --glass-border: rgba(255, 255, 255, 0.8);
             --text-dark: #646473;
@@ -29,9 +28,10 @@
             height: 100vh; overflow: hidden;
         }
 
+        /* 修正箇所：外枠のコンテナ */
         #game-container {
-            position: relative; width: 100%; max-width: 450px;
-            display: flex; flex-direction: column; padding: 15px;
+            width: 100%; max-width: 450px;
+            display: flex; flex-direction: column; padding: 20px;
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -40,20 +40,20 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
+        /* 修正箇所：各画面（position: absolute を撤廃し、自然に広がるように修正） */
         .screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            width: 100%;
             display: none; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 10;
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            border-radius: 24px;
+            align-items: center;
         }
         .screen.active { display: flex; }
 
         canvas {
             background: rgba(255, 255, 255, 0.5);
             border-radius: 16px;
-            width: 100%; height: auto; touch-action: none;
+            width: 100%; 
+            aspect-ratio: 1 / 1; 
+            touch-action: none;
             box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);
             padding: 8px;
         }
@@ -141,21 +141,20 @@ const CONFIG = {
     tileSize: 100,
     gap: 12,
     animDuration: 120,
-    // パステル＆おしゃれなカラーパレット
     colors: {
         bg: 'transparent', 
-        empty: 'rgba(255, 255, 255, 0.4)', // 空きマスの色
-        2:    { bg: '#ffe4e1', text: '#646473' }, // MistyRose
-        4:    { bg: '#ffdab9', text: '#646473' }, // PeachPuff
-        8:    { bg: '#ffb6c1', text: '#ffffff' }, // LightPink
-        16:   { bg: '#ffc0cb', text: '#ffffff' }, // Pink
-        32:   { bg: '#e6e6fa', text: '#646473' }, // Lavender
-        64:   { bg: '#d8bfd8', text: '#ffffff' }, // Thistle
-        128:  { bg: '#b0e0e6', text: '#646473' }, // PowderBlue
-        256:  { bg: '#87cefa', text: '#ffffff' }, // LightSkyBlue
-        512:  { bg: '#98fb98', text: '#646473' }, // PaleGreen
-        1024: { bg: '#f0e68c', text: '#646473' }, // Khaki
-        2048: { bg: '#ffd700', text: '#ffffff' }  // Gold
+        empty: 'rgba(255, 255, 255, 0.4)',
+        2:    { bg: '#ffe4e1', text: '#646473' }, 
+        4:    { bg: '#ffdab9', text: '#646473' }, 
+        8:    { bg: '#ffb6c1', text: '#ffffff' }, 
+        16:   { bg: '#ffc0cb', text: '#ffffff' }, 
+        32:   { bg: '#e6e6fa', text: '#646473' }, 
+        64:   { bg: '#d8bfd8', text: '#ffffff' }, 
+        128:  { bg: '#b0e0e6', text: '#646473' }, 
+        256:  { bg: '#87cefa', text: '#ffffff' }, 
+        512:  { bg: '#98fb98', text: '#646473' }, 
+        1024: { bg: '#f0e68c', text: '#646473' }, 
+        2048: { bg: '#ffd700', text: '#ffffff' }  
     }
 };
 
@@ -177,7 +176,7 @@ class Game2048 {
         this.history = [];
         this.score = 0;
         this.highScore = parseInt(localStorage.getItem('2048-highscore-pastel')) || 0;
-        this.animStartTime = 0;
+        this.animStartTime = null; 
         this.isAnimating = false;
 
         this.initCanvas();
@@ -318,7 +317,7 @@ class Game2048 {
 
         if (moved) {
             this.isAnimating = true;
-            this.animStartTime = performance.now();
+            this.animStartTime = null; 
             requestAnimationFrame((t) => this.animate(t));
         } else {
             this.history.pop();
@@ -326,8 +325,13 @@ class Game2048 {
     }
 
     animate(now) {
+        if (!now) now = performance.now();
+        if (this.animStartTime === null) {
+            this.animStartTime = now;
+        }
+        
         const elapsed = now - this.animStartTime;
-        const progress = Math.min(elapsed / CONFIG.animDuration, 1);
+        const progress = Math.min(Math.max(elapsed / CONFIG.animDuration, 0), 1);
 
         this.draw(progress);
 
@@ -342,16 +346,29 @@ class Game2048 {
         }
     }
 
+    drawSafeRoundRect(x, y, w, h, r) {
+        const ctx = this.ctx;
+        if (w <= 0 || h <= 0) return;
+        r = Math.max(0, Math.min(r, w / 2, h / 2));
+        
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     draw(progress) {
         const { ctx, canvas } = this;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 空の枠を描画
         for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
             this.drawTileRect(null, c, r);
         }
 
-        // タイルの描画
         this.grid.forEach(row => row.forEach(tile => {
             if(!tile) return;
             if(tile.mergedFrom && progress < 1) {
@@ -375,48 +392,36 @@ class Game2048 {
     }
 
     drawTileRect(val, c, r, scale = 1) {
-        const { ctx } = this;
         const size = CONFIG.tileSize * scale;
-        // 少しpaddingのようにはみ出さないように微調整
+        if (size <= 0.1) return;
+
         const x = CONFIG.gap + c * (CONFIG.tileSize + CONFIG.gap) + (CONFIG.tileSize - size)/2;
         const y = CONFIG.gap + r * (CONFIG.tileSize + CONFIG.gap) + (CONFIG.tileSize - size)/2;
-        const radius = 16; // 角丸を大きくして可愛く
+        const radius = 16;
 
         if (val === null) {
-            // 空のマス
-            ctx.fillStyle = CONFIG.colors.empty;
-            ctx.beginPath();
-            ctx.roundRect(x, y, size, size, radius);
-            ctx.fill();
+            this.ctx.fillStyle = CONFIG.colors.empty;
+            this.drawSafeRoundRect(x, y, size, size, radius);
             return;
         }
 
         const style = CONFIG.colors[val] || {bg:'#ffd700', text:'#fff'};
         
-        // 3Dの影（底面）部分を描画
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.beginPath();
-        ctx.roundRect(x, y + 6 * scale, size, size, radius); // 下にズラして描画
-        ctx.fill();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        this.drawSafeRoundRect(x, y + 6 * scale, size, size, radius); 
 
-        // メインのパネルを描画
-        ctx.fillStyle = style.bg;
-        ctx.beginPath();
-        ctx.roundRect(x, y, size, size, radius);
-        ctx.fill();
+        this.ctx.fillStyle = style.bg;
+        this.drawSafeRoundRect(x, y, size, size, radius);
 
-        // テキストの描画
-        ctx.fillStyle = style.text;
-        // 数字が大きい場合はフォントサイズを下げる
+        this.ctx.fillStyle = style.text;
         let fontSize = 42;
         if (val >= 100) fontSize = 36;
         if (val >= 1000) fontSize = 28;
         
-        ctx.font = `900 ${Math.floor(fontSize * scale)}px 'Nunito', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        // y軸の中央位置は少し上寄り（影の分）に見えるので補正
-        ctx.fillText(val, x + size/2, y + size/2 + 2);
+        this.ctx.font = `900 ${Math.floor(fontSize * scale)}px 'Nunito', sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(val, x + size/2, y + size/2 + 2);
     }
 
     refresh() {
@@ -457,7 +462,6 @@ class Game2048 {
 
     end(msg) {
         document.getElementById('result-msg').innerText = msg;
-        // メッセージによって色を変える
         document.getElementById('result-msg').style.color = msg === "You Win!" ? "#ffd700" : "#ff9a9e";
         document.getElementById('final-score').innerText = this.score;
         setTimeout(() => this.showScreen('screen-result'), 500);
@@ -491,18 +495,6 @@ class Game2048 {
             }
         });
     }
-}
-
-// polyfill
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-        this.moveTo(x + r, y);
-        this.arcTo(x + w, y, x + w, y + h, r);
-        this.arcTo(x + w, y + h, x, y + h, r);
-        this.arcTo(x, y + h, x, y, r);
-        this.arcTo(x, y, x + w, y, r);
-        return this;
-    };
 }
 
 const game = new Game2048();
