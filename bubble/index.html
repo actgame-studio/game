@@ -3,82 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Bubble Shooter</title>
+    <title>Kawaii Bubble Shooter</title>
     <style>
-        /* === CSS === */
+        /* === ゆめかわパステルデザイン === */
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #111; touch-action: none;
+            background-color: #fce4ec;
+            touch-action: none;
             display: flex; justify-content: center; align-items: center;
-            overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
+            color: #5a4a42;
         }
+        
         #game-wrapper {
             position: relative; width: 100%; max-width: 440px; height: 100%; max-height: 750px;
-            background-color: #2c3e50; box-shadow: 0 0 20px rgba(0,0,0,0.8); overflow: hidden;
+            background-color: #ffffff; 
+            box-shadow: 0 15px 35px rgba(233, 30, 99, 0.2); 
+            border-radius: 20px; border: 4px solid #f8bbd0;
+            overflow: hidden;
         }
         canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
         
-        /* UI Layer */
         .ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; transition: opacity 0.3s;
+            background: rgba(255, 255, 255, 0.85); z-index: 10; transition: opacity 0.3s;
+            backdrop-filter: blur(3px);
         }
         .hidden { display: none !important; }
-        h1 { margin: 0 0 10px 0; font-size: 2.8rem; text-align: center; background: -webkit-linear-gradient(#f1c40f, #e74c3c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(2px 2px 2px #000); }
-        h2 { margin: 0 0 10px 0; font-size: 2rem; color: #f1c40f; }
-        p { margin: 5px 0; font-size: 1.2rem; }
+        h1 { 
+            margin: 0 0 10px 0; font-size: 2.8rem; text-align: center; 
+            background: -webkit-linear-gradient(#ff80ab, #f48fb1); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            filter: drop-shadow(2px 2px 0px #fff) drop-shadow(0px 4px 5px rgba(0,0,0,0.1)); 
+        }
+        h2 { margin: 0 0 10px 0; font-size: 2rem; color: #ff80ab; }
+        p { margin: 5px 0; font-size: 1.1rem; font-weight: bold; }
+        
         .btn {
             margin-top: 20px; padding: 15px 40px; font-size: 1.3rem; font-weight: bold;
-            color: white; background: #e74c3c; border: none; border-radius: 30px;
-            cursor: pointer; box-shadow: 0 4px 0 #c0392b; transition: transform 0.1s;
+            color: white; background: #ff80ab; border: none; border-radius: 30px;
+            cursor: pointer; box-shadow: 0 6px 0 #f48fb1; transition: transform 0.1s, box-shadow 0.1s;
         }
-        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #c0392b; }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #f48fb1; }
         
-        /* HUD & Guide Button */
         #hud {
-            position: absolute; top: 10px; left: 10px; right: 10px;
+            position: absolute; top: 15px; left: 15px; right: 15px;
             display: flex; justify-content: space-between; align-items: flex-start;
-            color: white; font-weight: bold; font-size: 1.1rem; z-index: 5; pointer-events: none;
-            text-shadow: 1px 1px 2px black;
+            font-weight: 900; font-size: 1.1rem; z-index: 5; pointer-events: none;
         }
-        .gauge-container { width: 100px; height: 15px; background: rgba(0,0,0,0.5); border: 2px solid white; border-radius: 8px; margin-top: 5px; overflow: hidden; }
-        #combo-bar { width: 0%; height: 100%; background: #f1c40f; transition: width 0.2s; }
-        #turn-warning { color: #e74c3c; font-size: 1.2rem; display: none; }
+        
+        #turn-indicator {
+            background: #f1f8e9; border: 2px solid #c5e1a5; padding: 5px 12px; 
+            border-radius: 20px; font-size: 0.95rem; text-align: right;
+            transition: all 0.3s;
+        }
+        #turn-indicator.danger {
+            background: #ffebee; border-color: #ef9a9a; color: #c62828;
+            animation: pulse 1s infinite;
+        }
         
         #btn-guide {
-            position: absolute; top: 60px; left: 10px; padding: 8px 15px; font-size: 1rem; font-weight: bold;
-            color: white; background: #7f8c8d; border: 2px solid #fff; border-radius: 20px;
+            position: absolute; top: 75px; left: 15px; padding: 8px 15px; font-size: 0.9rem; font-weight: bold;
+            color: #5a4a42; background: #fff; border: 2px solid #e0e0e0; border-radius: 20px;
             cursor: pointer; z-index: 20; pointer-events: auto; outline: none; transition: background 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        #btn-guide.active { background: #e74c3c; }
+        #btn-guide.active { background: #81d4fa; border-color: #4fc3f7; color: white; }
     </style>
 </head>
 <body>
 
 <div id="game-wrapper">
     <canvas id="gameCanvas" width="440" height="750"></canvas>
-    
     <button id="btn-guide" class="hidden">GUIDE: OFF</button>
 
     <div id="hud" class="hidden">
-        <div>
+        <div style="text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;">
             SCORE: <span id="hud-score">0</span><br>
             HIGH: <span id="hud-highscore">0</span>
         </div>
-        <div style="text-align: right;">
-            COMBO<br>
-            <div class="gauge-container"><div id="combo-bar"></div></div>
-            <div id="turn-warning">⚠️ 天井接近</div>
+        <div>
+            <div id="turn-indicator">
+                天井まで<br><span id="turn-dots">🔵🔵🔵🔵</span>
+            </div>
         </div>
     </div>
 
     <div id="screen-title" class="ui-layer">
-        <h1>ULTIMATE<br>BUBBLE</h1>
+        <h1>KAWAII<br>BUBBLE</h1>
         <p>High Score: <span id="title-highscore">0</span></p>
-        <p style="font-size: 0.9rem; color:#aaa; margin-top:20px; text-align:center;">
-            画面下部タップでバブル入れ替え<br>5コンボで必殺バブル出現！
+        <p style="font-size: 0.95rem; color:#888; margin-top:20px; text-align:center; line-height:1.6;">
+            画面下部タップでバブル入れ替え<br>
+            <span style="color:#ff80ab;">4個以上同時消し</span>で特殊バブル生成！<br>
+            限界まで生き残れ！
         </p>
         <button class="btn" id="btn-start">GAME START</button>
     </div>
@@ -92,24 +113,20 @@
 </div>
 
 <script>
-/**
- * ==========================================
- * CONFIG & STATE
- * ==========================================
- */
+// === 設定 ===
 const CONFIG = {
-    width: 440, height: 750, // 幅を440に変更（ぴったり収まるように）
-    radius: 20, speed: 20,   // 半径を20に変更（11列×40=440）
+    width: 440, height: 750, radius: 20, speed: 20,
     cols: 11, rows: 20, startRows: 8,
-    colors: ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9'],
-    maxCombo: 5, turnsToDrop: 5
+    // パステルカラー: いちごミルク、ソーダ、メロン、レモン、グレープ
+    colors: ['#ffb3ba', '#bae1ff', '#baffc9', '#ffffba', '#e2cbfa'],
+    turnsToDrop: 4 // 4回ミスで天井が下がる
 };
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let gameState = 'title'; 
-let score = 0; let highScore = parseInt(localStorage.getItem('ultBubbleHigh')) || 0;
+let score = 0; let highScore = parseInt(localStorage.getItem('pastelBubbleHigh')) || 0;
 let grid = []; let gridOffset = 0;
 let currentBubble = null; let nextBubble = null; let holdBubble = null;
 let flyingBubble = null; let fallingBubbles = []; 
@@ -117,10 +134,7 @@ let inputX = CONFIG.width/2; let inputY = CONFIG.height/2; let isPressing = fals
 
 let combo = 0; let turnCounter = 0; let bounceCount = 0;
 let particles = []; let floatTexts = []; let shakeTime = 0;
-
-let isGuideOn = false;
-
-let audioCtx = null;
+let isGuideOn = false; let audioCtx = null;
 
 function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -137,13 +151,9 @@ function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     osc.start(); osc.stop(audioCtx.currentTime + duration);
 }
 
-/**
- * ==========================================
- * INITIALIZATION
- * ==========================================
- */
 function initGame() {
-    score = 0; combo = 0; turnCounter = 0; gridOffset = 0; updateHUD();
+    score = 0; combo = 0; turnCounter = 0; gridOffset = 0; 
+    updateHUD(); updateTurnUI();
     grid = []; particles = []; floatTexts = []; fallingBubbles = [];
     
     for (let r = 0; r < CONFIG.rows; r++) {
@@ -152,49 +162,33 @@ function initGame() {
         for (let c = 0; c < colsInRow; c++) {
             if (r < CONFIG.startRows) {
                 let rand = Math.random();
-                if (rand < 0.05) grid[r][c] = 5; 
-                else if (rand < 0.08) grid[r][c] = 6; 
+                if (rand < 0.05) grid[r][c] = 5; // 石
+                else if (rand < 0.08) grid[r][c] = 6; // ボム
                 else grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length);
             } else grid[r][c] = null;
         }
     }
-    
-    nextBubble = generateBubble(false); holdBubble = null;
+    nextBubble = generateBubble(); holdBubble = null;
     spawnBubble(); flyingBubble = null;
 }
 
-function generateBubble(isSpecialAllowed = true) {
-    let type = Math.floor(Math.random() * CONFIG.colors.length);
-    if (isSpecialAllowed && combo >= CONFIG.maxCombo) {
-        type = 6 + Math.floor(Math.random() * 4);
-        combo = 0; updateHUD();
-        spawnText(CONFIG.width/2, CONFIG.height - 100, "SPECIAL READY!", "#f1c40f", 60, 24);
-        playTone(600, 'square', 0.2, 0.1); setTimeout(() => playTone(800, 'square', 0.3, 0.1), 100);
-    }
-    return { x: CONFIG.width/2, y: CONFIG.height - 40, type: type };
+function generateBubble() {
+    return { x: CONFIG.width/2, y: CONFIG.height - 40, type: Math.floor(Math.random() * CONFIG.colors.length) };
 }
 
 function spawnBubble() {
     currentBubble = nextBubble;
     currentBubble.x = CONFIG.width/2; currentBubble.y = CONFIG.height - 40;
-    nextBubble = generateBubble(true);
+    nextBubble = generateBubble();
 }
 
 function swapBubble() {
     if (gameState !== 'playing' || flyingBubble !== null || !currentBubble) return;
-    if (holdBubble === null) {
-        holdBubble = { type: currentBubble.type }; spawnBubble();
-    } else {
-        let temp = currentBubble.type; currentBubble.type = holdBubble.type; holdBubble.type = temp;
-    }
+    if (holdBubble === null) { holdBubble = { type: currentBubble.type }; spawnBubble(); } 
+    else { let temp = currentBubble.type; currentBubble.type = holdBubble.type; holdBubble.type = temp; }
     playTone(400, 'triangle', 0.1);
 }
 
-/**
- * ==========================================
- * PHYSICS & LOGIC
- * ==========================================
- */
 const rowHeight = CONFIG.radius * Math.sqrt(3);
 
 function getGridPos(r, c) {
@@ -219,16 +213,13 @@ function fireBubble() {
 
 function updatePhysics() {
     for (let i = fallingBubbles.length - 1; i >= 0; i--) {
-        let fb = fallingBubbles[i];
-        fb.x += fb.vx; fb.vy += 0.5; fb.y += fb.vy;
+        let fb = fallingBubbles[i]; fb.x += fb.vx; fb.vy += 0.5; fb.y += fb.vy;
         if (fb.y > CONFIG.height + 50) fallingBubbles.splice(i, 1); 
     }
 
     if (!flyingBubble) return;
-
     flyingBubble.x += flyingBubble.vx; flyingBubble.y += flyingBubble.vy;
 
-    // 正確な反射計算による壁バウンド
     if (flyingBubble.x - CONFIG.radius <= 0) {
         flyingBubble.x = CONFIG.radius + (CONFIG.radius - flyingBubble.x); 
         flyingBubble.vx *= -1; bounceCount++; playTone(600, 'triangle', 0.05);
@@ -237,64 +228,34 @@ function updatePhysics() {
         flyingBubble.vx *= -1; bounceCount++; playTone(600, 'triangle', 0.05);
     }
 
-    if (flyingBubble.type === 8) { 
-        let hit = false;
-        for (let r = 0; r < CONFIG.rows; r++) {
-            let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
-            for (let c = 0; c < colsInRow; c++) {
-                if (grid[r] && grid[r][c] !== null) {
-                    let pos = getGridPos(r, c);
-                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
-                    if (Math.sqrt(dx*dx + dy*dy) < CONFIG.radius * 2) {
-                        createParticles(pos.x, pos.y, getColor(grid[r][c]));
-                        grid[r][c] = null; hit = true; addScore(50);
-                    }
-                }
-            }
-        }
-        if (hit) { playTone(150, 'sawtooth', 0.1); shakeTime = 5; }
-        if (flyingBubble.y <= 0) {
-            flyingBubble = null; dropFloatingBubbles(); checkTurnDrop(true); spawnBubble();
-        }
-        return;
-    }
-
     let isCollision = false;
-    if (flyingBubble.y - CONFIG.radius <= 0) {
-        isCollision = true;
-    } else {
+    if (flyingBubble.y - CONFIG.radius <= 0) { isCollision = true; } 
+    else {
         for (let r = 0; r < CONFIG.rows; r++) {
             let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
             for (let c = 0; c < colsInRow; c++) {
                 if (grid[r] && grid[r][c] !== null) {
                     let pos = getGridPos(r, c);
-                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
-                    if (Math.sqrt(dx*dx + dy*dy) < CONFIG.radius * 2 - 2) { isCollision = true; break; }
+                    if (Math.sqrt((flyingBubble.x - pos.x)**2 + (flyingBubble.y - pos.y)**2) < CONFIG.radius * 2 - 2) { isCollision = true; break; }
                 }
             }
             if (isCollision) break;
         }
     }
-
     if (isCollision) snapToGrid();
 }
 
 function snapToGrid() {
     let minDist = Infinity; let bestR = -1; let bestC = -1;
-
     for (let r = 0; r < CONFIG.rows; r++) {
         let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for (let c = 0; c < colsInRow; c++) {
             if (grid[r] && grid[r][c] === null) {
                 let isValid = (r === 0);
-                if (!isValid) {
-                    let neighbors = getNeighbors(r, c);
-                    isValid = neighbors.some(n => grid[n.r][n.c] !== null);
-                }
+                if (!isValid) isValid = getNeighbors(r, c).some(n => grid[n.r][n.c] !== null);
                 if (isValid) {
                     let pos = getGridPos(r, c);
-                    let dx = flyingBubble.x - pos.x; let dy = flyingBubble.y - pos.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    let dist = Math.sqrt((flyingBubble.x - pos.x)**2 + (flyingBubble.y - pos.y)**2);
                     if (dist < minDist) { minDist = dist; bestR = r; bestC = c; }
                 }
             }
@@ -304,15 +265,9 @@ function snapToGrid() {
     if (bestR !== -1 && bestC !== -1) {
         let type = flyingBubble.type;
         grid[bestR][bestC] = type;
-        
-        let matchMade = false;
-        if (type === 6) { matchMade = true; explodeBomb(bestR, bestC); } 
-        else if (type === 9) { matchMade = true; explodeColorBomb(bestR, bestC); } 
-        else { matchMade = checkMatches(bestR, bestC, type); }
-
+        let matchMade = checkMatches(bestR, bestC, type);
         if (matchMade) {
-            combo++;
-            if (bounceCount > 0) { addScore(300); spawnText(flyingBubble.x, flyingBubble.y, "Trick Shot!", "#3498db"); }
+            if (bounceCount > 0) { addScore(300); spawnText(flyingBubble.x, flyingBubble.y, "Trick Shot!", "#ff80ab"); }
         } else { combo = 0; }
         
         checkTurnDrop(matchMade); checkWinLose();
@@ -327,7 +282,6 @@ function getNeighbors(r, c) {
     const dirsEven = [[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]];
     const dirsOdd  = [[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]];
     const dirs = ((r + gridOffset) % 2 === 0) ? dirsEven : dirsOdd;
-
     for (let d of dirs) {
         let nr = r + d[0]; let nc = c + d[1];
         if (nr >= 0 && nr < CONFIG.rows) {
@@ -338,59 +292,71 @@ function getNeighbors(r, c) {
     return neighbors;
 }
 
-/**
- * ==========================================
- * MATCHING & SPECIALS
- * ==========================================
- */
 function checkMatches(startR, startC, type) {
     let matchGroup = []; let visited = new Set();
     let queue = [{r: startR, c: startC}]; visited.add(`${startR},${startC}`);
-    let matchColor = type;
-
-    if (type === 7) {
-        for (let n of getNeighbors(startR, startC)) {
-            let t = grid[n.r][n.c];
-            if (t !== null && t < 5) { matchColor = t; break; }
-        }
-        if (matchColor === 7) matchColor = 0;
-    }
 
     while (queue.length > 0) {
         let curr = queue.shift(); matchGroup.push(curr);
         for (let n of getNeighbors(curr.r, curr.c)) {
             let t = grid[n.r][n.c];
-            if ((t === matchColor || t === 7) && !visited.has(`${n.r},${n.c}`)) {
-                visited.add(`${n.r},${n.c}`); queue.push(n);
-            }
+            if (t === type && !visited.has(`${n.r},${n.c}`)) { visited.add(`${n.r},${n.c}`); queue.push(n); }
         }
     }
 
     if (matchGroup.length >= 3) {
-        let pitch = 400 + Math.min(combo * 100, 800); playTone(pitch, 'sine', 0.15);
+        combo++; let multiplier = 1 + (combo * 0.1);
+        addScore(Math.floor(matchGroup.length * 20 * multiplier));
+        if (combo > 1) spawnText(CONFIG.width/2, 100, `${combo} COMBO!`, "#f48fb1", 50, 24);
+        playTone(400 + Math.min(combo * 50, 600), 'sine', 0.15);
+
+        let specialCreated = null;
+        if (matchGroup.length === 4) specialCreated = 6; // Bomb
+        else if (matchGroup.length === 5) specialCreated = 8; // Thunder
+        else if (matchGroup.length >= 6) specialCreated = 9; // ColorBomb
+
         for (let b of matchGroup) {
-            let pos = getGridPos(b.r, b.c); createParticles(pos.x, pos.y, getColor(grid[b.r][b.c])); grid[b.r][b.c] = null;
+            if (specialCreated && b.r === startR && b.c === startC) {
+                grid[b.r][b.c] = specialCreated; 
+                createParticles(getGridPos(b.r, b.c).x, getGridPos(b.r, b.c).y, '#fff');
+                spawnText(getGridPos(b.r, b.c).x, getGridPos(b.r, b.c).y - 20, "ITEM!", "#ffb3ba", 40, 16);
+            } else {
+                let pos = getGridPos(b.r, b.c); createParticles(pos.x, pos.y, getColor(grid[b.r][b.c]));
+                grid[b.r][b.c] = null;
+            }
         }
-        addScore(matchGroup.length * 20); triggerChainBombs(matchGroup); dropFloatingBubbles();
+
+        let clearedForChain = matchGroup.filter(b => !(specialCreated && b.r === startR && b.c === startC));
+        triggerChainSpecials(clearedForChain, {r: startR, c: startC});
+        dropFloatingBubbles();
         return true;
     }
     return false;
 }
 
-function triggerChainBombs(clearedBubbles) {
+function triggerChainSpecials(clearedBubbles, skipPos = null) {
     let triggered = true;
     while (triggered) {
-        triggered = false; let bombsToExplode = [];
+        triggered = false; let specialsToExplode = [];
         for (let b of clearedBubbles) {
-            for (let n of getNeighbors(b.r, b.c)) { if (grid[n.r][n.c] === 6) bombsToExplode.push(n); }
+            if (b.type === 6 || b.type === 8 || b.type === 9) specialsToExplode.push(b);
+            for (let n of getNeighbors(b.r, b.c)) {
+                if (skipPos && n.r === skipPos.r && n.c === skipPos.c) continue;
+                let t = grid[n.r][n.c];
+                if (t === 6 || t === 8 || t === 9) specialsToExplode.push({r: n.r, c: n.c, type: t});
+            }
         }
-        let uniqueBombs = Array.from(new Set(bombsToExplode.map(b => `${b.r},${b.c}`))).map(s => {
-            let [r, c] = s.split(','); return {r: parseInt(r), c: parseInt(c)};
+        let uniqueSpecials = Array.from(new Set(specialsToExplode.map(b => `${b.r},${b.c}`))).map(s => {
+            let [r, c] = s.split(','); return specialsToExplode.find(b => b.r == r && b.c == c);
         });
         
-        if (uniqueBombs.length > 0) {
-            clearedBubbles = [];
-            for (let b of uniqueBombs) clearedBubbles.push(...explodeBomb(b.r, b.c, false));
+        if (uniqueSpecials.length > 0) {
+            clearedBubbles = []; 
+            for (let b of uniqueSpecials) {
+                if (b.type === 6) clearedBubbles.push(...explodeBomb(b.r, b.c, false));
+                else if (b.type === 8) clearedBubbles.push(...explodeRow(b.r, b.c, false));
+                else if (b.type === 9) clearedBubbles.push(...explodeColorBomb(b.r, b.c, false));
+            }
             triggered = true;
         }
     }
@@ -401,7 +367,7 @@ function explodeBomb(r, c, triggerDrop = true) {
     let blownUp = []; let area = [{r, c}, ...getNeighbors(r, c)];
     let extendedArea = [...area];
     for (let n of area) extendedArea.push(...getNeighbors(n.r, n.c));
-    
+    if (grid[r] && grid[r][c] !== undefined) grid[r][c] = null;
     for (let n of extendedArea) {
         if (n.r >= 0 && n.r < CONFIG.rows && grid[n.r] && grid[n.r][n.c] !== null) {
             let pos = getGridPos(n.r, n.c); createParticles(pos.x, pos.y, getColor(grid[n.r][n.c]));
@@ -411,12 +377,25 @@ function explodeBomb(r, c, triggerDrop = true) {
     addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
-function explodeColorBomb(r, c) {
+function explodeRow(r, c, triggerDrop = true) {
+    playTone(300, 'sawtooth', 0.2, 0.2); shakeTime = 10;
+    let blownUp = []; let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+    if (grid[r] && grid[r][c] !== undefined) grid[r][c] = null;
+    for (let col = 0; col < colsInRow; col++) {
+        if (grid[r] && grid[r][col] !== null) {
+            let pos = getGridPos(r, col); createParticles(pos.x, pos.y, getColor(grid[r][col]));
+            blownUp.push({r: r, c: col, type: grid[r][col]}); grid[r][col] = null;
+        }
+    }
+    addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
+}
+
+function explodeColorBomb(r, c, triggerDrop = true) {
     let targetColor = -1;
     for (let n of getNeighbors(r, c)) { let t = grid[n.r][n.c]; if (t !== null && t < 5) { targetColor = t; break; } }
     if (targetColor === -1) targetColor = Math.floor(Math.random()*5);
-
-    playTone(800, 'sawtooth', 0.4, 0.1); shakeTime = 15; let count = 0; grid[r][c] = null;
+    playTone(800, 'sawtooth', 0.4, 0.1); shakeTime = 15; let blownUp = [];
+    if (grid[r] && grid[r][c] !== undefined) grid[r][c] = null;
     let pos = getGridPos(r, c); createParticles(pos.x, pos.y, getColor(9));
 
     for (let row = 0; row < CONFIG.rows; row++) {
@@ -424,17 +403,32 @@ function explodeColorBomb(r, c) {
         for (let col = 0; col < colsInRow; col++) {
             if (grid[row][col] === targetColor) {
                 let p = getGridPos(row, col); createParticles(p.x, p.y, getColor(targetColor));
-                grid[row][col] = null; count++;
+                blownUp.push({r: row, c: col, type: grid[row][col]}); grid[row][col] = null;
             }
         }
     }
-    addScore(count * 50); spawnText(CONFIG.width/2, CONFIG.height/2, "COLOR WIPE!", getColor(targetColor), 60, 30);
-    dropFloatingBubbles();
+    addScore(blownUp.length * 50); spawnText(CONFIG.width/2, CONFIG.height/2, "COLOR WIPE!", getColor(targetColor), 60, 30);
+    if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
 function dropFloatingBubbles() {
     let connected = new Set(); let queue = [];
-    for (let c = 0; c < CONFIG.cols; c++) { if (grid[0] && grid[0][c] !== null) { connected.add(`0,${c}`); queue.push({r: 0, c: c}); } }
+    
+    for (let c = 0; c < CONFIG.cols; c++) { 
+        if (grid[0] && grid[0][c] !== null) { connected.add(`0,${c}`); queue.push({r: 0, c: c}); } 
+    }
+
+    for (let r = 0; r < CONFIG.rows; r++) {
+        let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            let type = grid[r][c];
+            if (type === 6 || type === 8 || type === 9) {
+                if (!connected.has(`${r},${c}`)) {
+                    connected.add(`${r},${c}`); queue.push({r: r, c: c});
+                }
+            }
+        }
+    }
 
     while (queue.length > 0) {
         let curr = queue.shift();
@@ -456,10 +450,23 @@ function dropFloatingBubbles() {
     }
     
     if (droppedCount > 0) {
-        addScore(droppedCount * 50);
-        if (droppedCount >= 10) { shakeTime = 15; playTone(200, 'square', 0.4); spawnText(CONFIG.width/2, CONFIG.height/2, "AMAZING!!", "#9b59b6", 60, 45); } 
-        else if (droppedCount >= 5) { shakeTime = 8; playTone(250, 'square', 0.2); spawnText(CONFIG.width/2, CONFIG.height/2, "GREAT!", "#2ecc71", 50, 30); }
+        let multiplier = 1 + (combo * 0.1); addScore(Math.floor(droppedCount * 50 * multiplier));
+        if (droppedCount >= 10) { shakeTime = 15; playTone(200, 'square', 0.4); spawnText(CONFIG.width/2, CONFIG.height/2, "AMAZING!!", "#f48fb1", 60, 45); } 
+        else if (droppedCount >= 5) { shakeTime = 8; playTone(250, 'square', 0.2); spawnText(CONFIG.width/2, CONFIG.height/2, "GREAT!", "#81d4fa", 50, 30); }
     }
+}
+
+function updateTurnUI() {
+    let left = CONFIG.turnsToDrop - turnCounter;
+    let dots = "";
+    for(let i=0; i < CONFIG.turnsToDrop; i++) {
+        if (i < left) dots += "🔵"; else dots += "⚪";
+    }
+    document.getElementById('turn-dots').innerText = dots;
+    
+    let box = document.getElementById('turn-indicator');
+    if (left <= 1) { box.classList.add('danger'); } 
+    else { box.classList.remove('danger'); }
 }
 
 function checkTurnDrop(matchMade) {
@@ -470,11 +477,8 @@ function checkTurnDrop(matchMade) {
         for(let c=0; c<colsInRow; c++) { let rand = Math.random(); if (rand < 0.05) newRow[c] = 5; else newRow[c] = Math.floor(Math.random() * 5); }
         grid.unshift(newRow); grid.pop(); 
         shakeTime = 15; playTone(100, 'sawtooth', 0.5, 0.3);
-        document.getElementById('turn-warning').style.display = 'none';
-    } else if (turnCounter === CONFIG.turnsToDrop - 1) {
-        document.getElementById('turn-warning').style.display = 'block';
-    } else { document.getElementById('turn-warning').style.display = 'none'; }
-    updateHUD();
+    }
+    updateHUD(); updateTurnUI();
 }
 
 function checkWinLose() {
@@ -485,19 +489,25 @@ function checkWinLose() {
             if (grid[r] && grid[r][c] !== null) { hasBubble = true; if (r >= CONFIG.rows - 2) bottomWarning = true; }
         }
     }
-    if (!hasBubble) { endGame('CLEAR!'); return; }
+    if (!hasBubble) { 
+        addScore(5000); spawnText(CONFIG.width/2, CONFIG.height/2, "CLEAR!! +5000", "#ffb3ba", 80, 30);
+        playTone(600, 'square', 0.2); setTimeout(()=>playTone(800, 'square', 0.4), 200);
+        gridOffset = 0;
+        for (let r = 0; r < 5; r++) {
+            let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            for (let c = 0; c < colsInRow; c++) { grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length); }
+        }
+        return; 
+    }
     if (bottomWarning) { endGame('GAME OVER'); return; }
 }
 
-/**
- * ==========================================
- * EFFECTS & RENDERING
- * ==========================================
- */
 function getColor(type) {
     if (type < 5) return CONFIG.colors[type];
-    if (type === 5) return '#7f8c8d'; if (type === 6) return '#222';    
-    if (type === 7) return 'linear-gradient'; if (type === 8) return '#f1c40f'; if (type === 9) return '#e84393'; 
+    if (type === 5) return '#b0bec5'; // 石: 青みグレー
+    if (type === 6) return '#f48fb1'; // ボム: ピンク
+    if (type === 8) return '#ffeaa7'; // 雷: イエロー
+    if (type === 9) return '#e1bee7'; // カラー: パープル
     return '#fff';
 }
 
@@ -506,24 +516,65 @@ function createParticles(x, y, color) {
 }
 function spawnText(x, y, text, color, maxLife = 40, size = 20) { floatTexts.push({x, y, text, color, life: maxLife, maxLife, size}); }
 
-function drawBubbleEx(x, y, type, radius) {
-    ctx.beginPath(); ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
-    if (type === 7) { 
-        let grad = ctx.createLinearGradient(x-radius, y-radius, x+radius, y+radius);
-        grad.addColorStop(0, "red"); grad.addColorStop(0.33, "yellow"); grad.addColorStop(0.66, "green"); grad.addColorStop(1, "blue");
-        ctx.fillStyle = grad;
-    } else { ctx.fillStyle = getColor(type); }
-    ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+// === 💖 新しい「お顔＆マシュマロ質感」描画関数 💖 ===
+function drawKawaiiFace(ctx, x, y, radius) {
+    ctx.fillStyle = '#5a4a42'; // 優しい茶色の目と口
+    const eyeOffsetX = radius * 0.3; const eyeOffsetY = radius * 0.1;
+    const eyeSizeW = radius * 0.15; const eyeSizeH = radius * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(x - eyeOffsetX, y - eyeOffsetY, eyeSizeW, eyeSizeH, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + eyeOffsetX, y - eyeOffsetY, eyeSizeW, eyeSizeH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff'; // 目のハイライト
+    ctx.beginPath();
+    ctx.arc(x - eyeOffsetX + eyeSizeW*0.3, y - eyeOffsetY - eyeSizeH*0.3, eyeSizeW*0.4, 0, Math.PI*2);
+    ctx.arc(x + eyeOffsetX + eyeSizeW*0.3, y - eyeOffsetY - eyeSizeH*0.3, eyeSizeW*0.4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#5a4a42'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(x, y, radius * 0.3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); // 口
+}
 
-    if (type < 5 || type === 7) { ctx.beginPath(); ctx.arc(x - radius*0.3, y - radius*0.3, radius*0.25, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill(); } 
-    else if (type === 5) { ctx.fillStyle = '#95a5a6'; ctx.fillRect(x-radius*0.4, y-radius*0.4, radius*0.8, radius*0.8); } 
-    else if (type === 6) { ctx.fillStyle = 'red'; ctx.font = "bold 14px Arial"; ctx.fillText("B", x-5, y+5); } 
-    else if (type === 8) { ctx.fillStyle = '#fff'; ctx.font = "bold 16px Arial"; ctx.fillText("⚡", x-8, y+6); } 
-    else if (type === 9) { ctx.fillStyle = '#fff'; ctx.font = "bold 14px Arial"; ctx.fillText("C", x-5, y+5); }
+function drawBubbleEx(x, y, type, radius) {
+    // 1. ベースの形と色（少し小さめに描いて太い線を内側に収める）
+    ctx.beginPath(); ctx.arc(x, y, radius - 2, 0, Math.PI * 2);
+    let baseColor = getColor(type);
+    ctx.fillStyle = baseColor; ctx.fill();
+
+    // 2. マシュマロ風の柔らかいグラデーション（通常色と特殊アイテムのみ）
+    if (type < 5 || type >= 6) {
+        let grad = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');   // 内側の柔らかな光
+        grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.4)'); // フチのハイライト
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.05)');        // ほんのり影
+        ctx.fillStyle = grad; ctx.fill();
+        // ツヤ感の追加
+        ctx.beginPath();
+        ctx.ellipse(x - radius * 0.3, y - radius * 0.3, radius * 0.2, radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.fill();
+    }
+
+    // 3. 太くて柔らかいアウトライン
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.stroke();
+
+    // 4. 中身（お顔 または アイコン）
+    if (type < 5) {
+        // 通常色には「お顔」を描画！
+        drawKawaiiFace(ctx, x, y, radius);
+    } else if (type === 5) {
+        // 石（シンプルに）
+        ctx.fillStyle = '#b0bec5'; ctx.fillRect(x-radius*0.5, y-radius*0.5, radius, radius);
+        ctx.strokeStyle = '#78909c'; ctx.lineWidth = 2; ctx.strokeRect(x-radius*0.5, y-radius*0.5, radius, radius);
+    } else if (type === 6) {
+         ctx.fillStyle = '#fff'; ctx.font = "20px sans-serif"; ctx.fillText("💣", x-10, y+7);
+    } else if (type === 8) {
+         ctx.fillStyle = '#fff'; ctx.font = "bold 20px sans-serif"; ctx.fillText("⚡", x-10, y+7);
+    } else if (type === 9) {
+         ctx.fillStyle = '#fff'; ctx.font = "20px sans-serif"; ctx.fillText("🌈", x-10, y+7);
+    }
 }
 
 function drawGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fdfbfb'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTime--; }
@@ -539,37 +590,33 @@ function drawGame() {
     for (let fb of fallingBubbles) drawBubbleEx(fb.x, fb.y, fb.type, CONFIG.radius);
 
     if (gameState === 'playing') {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, CONFIG.height - 80, CONFIG.width, 80);
-        ctx.fillStyle = '#fff'; ctx.font = "12px Arial";
-        ctx.fillText("NEXT", CONFIG.width/2 + 50, CONFIG.height - 55); ctx.fillText("HOLD (Tap area to swap)", 20, CONFIG.height - 55);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(0, CONFIG.height - 85, CONFIG.width, 85);
+        ctx.strokeStyle = '#f8bbd0'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, CONFIG.height - 85); ctx.lineTo(CONFIG.width, CONFIG.height - 85); ctx.stroke();
+        
+        ctx.fillStyle = '#5a4a42'; ctx.font = "bold 12px Nunito";
+        ctx.fillText("NEXT", CONFIG.width/2 + 50, CONFIG.height - 60); ctx.fillText("HOLD (Tap area to swap)", 20, CONFIG.height - 60);
 
-        if (nextBubble) drawBubbleEx(CONFIG.width/2 + 65, CONFIG.height - 30, nextBubble.type, 12);
-        if (holdBubble) drawBubbleEx(40, CONFIG.height - 30, holdBubble.type, 15);
-        else { ctx.strokeStyle = '#aaa'; ctx.strokeRect(25, CONFIG.height - 45, 30, 30); }
+        if (nextBubble) drawBubbleEx(CONFIG.width/2 + 65, CONFIG.height - 35, nextBubble.type, 14);
+        if (holdBubble) drawBubbleEx(40, CONFIG.height - 35, holdBubble.type, 18);
+        else { ctx.strokeStyle = '#e0e0e0'; ctx.setLineDash([3,3]); ctx.strokeRect(22, CONFIG.height - 53, 36, 36); ctx.setLineDash([]); }
 
         if (currentBubble) {
-            if (isPressing && inputY < CONFIG.height - 80) { 
+            if (isPressing && inputY < CONFIG.height - 85) { 
                 let dx = inputX - currentBubble.x; let dy = inputY - currentBubble.y;
                 let angle = Math.atan2(dy, dx);
                 if (angle > -0.1) angle = -0.1; if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
 
                 if (isGuideOn) {
-                    // --- 正確な壁反射とスナップをシミュレートするガイド ---
                     let simX = currentBubble.x; let simY = currentBubble.y;
                     let simVx = Math.cos(angle) * 4; let simVy = Math.sin(angle) * 4;
                     let hit = false; let path = [{x: simX, y: simY}];
                     
                     for (let step = 0; step < 400; step++) {
                         simX += simVx; simY += simVy;
+                        if (simX - CONFIG.radius <= 0) { simX = CONFIG.radius + (CONFIG.radius - simX); simVx *= -1; path.push({x: simX, y: simY}); } 
+                        else if (simX + CONFIG.radius >= CONFIG.width) { simX = (CONFIG.width - CONFIG.radius) - (simX + CONFIG.radius - CONFIG.width); simVx *= -1; path.push({x: simX, y: simY}); }
                         
-                        // 正確な壁反射計算
-                        if (simX - CONFIG.radius <= 0) { 
-                            simX = CONFIG.radius + (CONFIG.radius - simX); simVx *= -1; path.push({x: simX, y: simY}); 
-                        } else if (simX + CONFIG.radius >= CONFIG.width) { 
-                            simX = (CONFIG.width - CONFIG.radius) - (simX + CONFIG.radius - CONFIG.width); simVx *= -1; path.push({x: simX, y: simY}); 
-                        }
-                        
-                        // 衝突判定
                         if (simY - CONFIG.radius <= 0) { hit = true; break; }
                         let collision = false;
                         for (let r = 0; r < CONFIG.rows; r++) {
@@ -585,7 +632,6 @@ function drawGame() {
                         if (collision) { hit = true; break; }
                     }
 
-                    // ゴーストバブルを最終着弾地点（グリッド）に正確にスナップさせる
                     if (hit) {
                         let minDist = Infinity; let bestR = -1; let bestC = -1;
                         for (let r = 0; r < CONFIG.rows; r++) {
@@ -593,10 +639,7 @@ function drawGame() {
                             for (let c = 0; c < colsInRow; c++) {
                                 if (grid[r] && grid[r][c] === null) {
                                     let isValid = (r === 0);
-                                    if (!isValid) {
-                                        let neighbors = getNeighbors(r, c);
-                                        isValid = neighbors.some(n => grid[n.r][n.c] !== null);
-                                    }
+                                    if (!isValid) isValid = getNeighbors(r, c).some(n => grid[n.r][n.c] !== null);
                                     if (isValid) {
                                         let pos = getGridPos(r, c);
                                         let dist = Math.sqrt((simX - pos.x)**2 + (simY - pos.y)**2);
@@ -605,26 +648,19 @@ function drawGame() {
                                 }
                             }
                         }
-                        if (bestR !== -1 && bestC !== -1) {
-                            let snapPos = getGridPos(bestR, bestC);
-                            simX = snapPos.x; simY = snapPos.y; // グリッド中心座標に上書き
-                        }
+                        if (bestR !== -1 && bestC !== -1) { let snapPos = getGridPos(bestR, bestC); simX = snapPos.x; simY = snapPos.y; }
                     }
 
                     ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
                     for(let i=1; i<path.length; i++) ctx.lineTo(path[i].x, path[i].y);
                     ctx.lineTo(simX, simY);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                    ctx.strokeStyle = 'rgba(244, 143, 177, 0.8)'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.stroke(); ctx.setLineDash([]);
                     
-                    // スナップ済みの位置にゴースト表示
-                    ctx.globalAlpha = 0.4;
-                    drawBubbleEx(simX, simY, currentBubble.type, CONFIG.radius);
-                    ctx.globalAlpha = 1.0;
-
+                    ctx.globalAlpha = 0.5; drawBubbleEx(simX, simY, currentBubble.type, CONFIG.radius); ctx.globalAlpha = 1.0;
                 } else {
                     ctx.beginPath(); ctx.moveTo(currentBubble.x, currentBubble.y);
                     ctx.lineTo(currentBubble.x + Math.cos(angle)*200, currentBubble.y + Math.sin(angle)*200);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                    ctx.strokeStyle = 'rgba(244, 143, 177, 0.5)'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.stroke(); ctx.setLineDash([]);
                 }
             }
             drawBubbleEx(currentBubble.x, currentBubble.y, currentBubble.type, CONFIG.radius);
@@ -634,13 +670,16 @@ function drawGame() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.life -= 0.02;
         if (p.life <= 0) { particles.splice(i, 1); continue; }
-        ctx.globalAlpha = p.life; ctx.fillStyle = p.color === 'linear-gradient' ? '#fff' : p.color; ctx.fillRect(p.x, p.y, 4, 4); ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color; 
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1.0;
     }
 
     for (let i = floatTexts.length - 1; i >= 0; i--) {
         let t = floatTexts[i]; t.y -= 1; t.life -= 1;
         if (t.life <= 0) { floatTexts.splice(i, 1); continue; }
-        ctx.globalAlpha = t.life / t.maxLife; ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px 'Segoe UI'`; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+        ctx.globalAlpha = t.life / t.maxLife; ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px 'Nunito'`; 
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
         ctx.strokeText(t.text, t.x - (t.size), t.y); ctx.fillText(t.text, t.x - (t.size), t.y); ctx.globalAlpha = 1.0;
     }
 
@@ -652,11 +691,6 @@ function gameLoop() {
     drawGame(); requestAnimationFrame(gameLoop);
 }
 
-/**
- * ==========================================
- * UI & INPUTS
- * ==========================================
- */
 const screens = { title: document.getElementById('screen-title'), result: document.getElementById('screen-result'), hud: document.getElementById('hud') };
 const btnGuide = document.getElementById('btn-guide');
 
@@ -671,10 +705,9 @@ function changeState(newState) {
 function addScore(points) { score += points; updateHUD(); }
 function updateHUD() {
     document.getElementById('hud-score').innerText = score; document.getElementById('hud-highscore').innerText = Math.max(score, highScore);
-    document.getElementById('combo-bar').style.width = `${(combo / CONFIG.maxCombo) * 100}%`;
 }
 function endGame(resultText) {
-    if (score > highScore) { highScore = score; localStorage.setItem('ultBubbleHigh', highScore); }
+    if (score > highScore) { highScore = score; localStorage.setItem('pastelBubbleHigh', highScore); }
     document.getElementById('result-title').innerText = resultText;
     document.getElementById('result-score').innerText = score; document.getElementById('result-highscore').innerText = highScore;
     changeState('result');
@@ -696,24 +729,18 @@ function updateInputPos(e) {
 }
 
 const evOpts = { passive: false };
-
 function handleStart(e) {
-    // 修正: UI上のボタン（START, RETRY, GUIDE 等）のタッチ操作時は preventDefault をかけない
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-    
     if (e.type === 'touchstart') e.preventDefault();
     if (gameState !== 'playing') return;
-    
     updateInputPos(e);
-    if (inputY > CONFIG.height - 80) { swapBubble(); isPressing = false; } else { isPressing = true; }
+    if (inputY > CONFIG.height - 85) { swapBubble(); isPressing = false; } else { isPressing = true; }
 }
-
 function handleMove(e) {
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
     if (e.type === 'touchmove') e.preventDefault();
     if (!isPressing) return; updateInputPos(e);
 }
-
 function handleEnd(e) {
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
     if (e.type === 'touchend') e.preventDefault();

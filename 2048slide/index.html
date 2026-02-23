@@ -3,152 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pastel Merge 6x6</title>
+    <title>Pastel Merge 6x8</title>
     <style>
-        /* パステル調の新しいカラーパレット */
         :root {
-            --bg-color: #fcf8f3;      /* 全体の背景: クリーミーなオフホワイト */
-            --text-color: #8a7f75;    /* テキスト: 柔らかいグレーベージュ */
-            --board-bg: #f0e6db;      /* 盤面背景: 淡いパステルベージュ */
-            --primary-btn: #ffb7c5;   /* ボタン: パステルピンク */
+            --bg-color: #fcf8f3;
+            --text-color: #8a7f75;
+            --board-bg: #f0e6db;
+            --primary-btn: #ffb7c5;
             --primary-btn-hover: #ff9eb0;
-            --score-bg: #e8d3c5;      /* スコアボックス背景 */
+            --score-bg: #e8d3c5;
         }
 
-        * {
-            box-sizing: border-box;
-            touch-action: none;
-        }
+        * { box-sizing: border-box; touch-action: none; }
 
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Rounded Mplus 1c', 'Helvetica Neue', Arial, sans-serif; /* 丸文字フォントを優先 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden;
         }
 
         #app-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 100%; height: 100%; position: relative;
+            display: flex; justify-content: center; align-items: center;
         }
 
         .screen {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: var(--bg-color);
-            z-index: 10;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            background-color: var(--bg-color); z-index: 10;
         }
         .screen.active { display: flex; }
 
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            text-align: center;
-            color: var(--text-color);
-            /* タイトルの可愛らしい立体感 */
-            text-shadow: 2px 2px 0px #fff, 4px 4px 0px #e8d3c5;
-        }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 0px #fff, 4px 4px 0px #e8d3c5; }
         
         .info-box { 
-            background: var(--score-bg); 
-            color: #fff; 
-            padding: 8px 15px; 
-            border-radius: 15px; /* 丸みを強く */
-            font-weight: bold; 
-            text-align: center; 
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1); /* 柔らかい影 */
-            min-width: 80px;
+            background: var(--score-bg); color: #fff; padding: 8px 15px; 
+            border-radius: 15px; font-weight: bold; text-align: center; 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1); min-width: 80px;
         }
         .info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #fffaf0;}
         .info-value { font-size: 1.4rem; line-height: 1.2; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);}
 
         button {
-            background-color: var(--primary-btn);
-            color: white;
-            border: none;
-            padding: 15px 35px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            border-radius: 25px; /* まんまるボタン */
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 25px;
-            box-shadow: 0 5px 10px rgba(255, 183, 197, 0.4);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            background-color: var(--primary-btn); color: white; border: none;
+            padding: 15px 35px; font-size: 1.3rem; font-weight: bold; border-radius: 25px; 
+            cursor: pointer; transition: all 0.2s; margin-top: 25px;
+            box-shadow: 0 5px 10px rgba(255, 183, 197, 0.4); text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
-        button:hover { 
-            background-color: var(--primary-btn-hover); 
-            transform: translateY(-2px);
-            box-shadow: 0 7px 14px rgba(255, 183, 197, 0.5);
-        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 7px 14px rgba(255, 183, 197, 0.5); }
         button:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        #game-screen.active {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
-        }
+        #game-screen.active { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
 
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            width: 96vw;
-            max-width: 536px;
-            margin-bottom: 20px;
-            gap: 10px;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            width: 90vw; max-width: 450px; margin-bottom: 15px; gap: 10px;
         }
 
-        .header-left {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .header-left { display: flex; flex-direction: column; gap: 8px; }
 
-        .game-title {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0;
-            color: var(--text-color);
-            line-height: 1;
-            text-shadow: 2px 2px 0px #fff, 3px 3px 0px #e8d3c5;
-        }
+        .game-title { font-size: 1.8rem; font-weight: bold; margin: 0; line-height: 1; text-shadow: 2px 2px 0px #fff, 3px 3px 0px #e8d3c5; }
 
         .canvas-wrapper {
-            width: 96vw;
-            max-width: 536px;
-            aspect-ratio: 1 / 1;
-            margin: 0 auto;
-            position: relative;
-            border-radius: 20px;
-            /* 盤面自体の立体感 */
+            width: 90vw; max-width: 450px; aspect-ratio: 6 / 8;
+            margin: 0 auto; position: relative; border-radius: 20px;
             box-shadow: inset 0 3px 8px rgba(0,0,0,0.05), 0 8px 16px rgba(0,0,0,0.08);
-            padding: 8px; /* Canvasとの間に隙間を作る */
-            background-color: var(--board-bg);
+            padding: 8px; background-color: var(--board-bg);
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            border-radius: 16px;
-        }
+        canvas { width: 100%; height: 100%; display: block; border-radius: 16px; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
 </head>
@@ -167,9 +93,10 @@
     <div id="game-screen" class="screen">
         <div class="header">
             <div class="header-left">
-                <div class="game-title">6x6</div>
-                <div class="info-box" style="background: #bde0fe;"> <div class="info-label">MOVES</div>
-                    <div class="info-value" id="game-moves">150</div>
+                <div class="game-title">6x8</div>
+                <div class="info-box" style="background: #bde0fe;">
+                    <div class="info-label">MOVES</div>
+                    <div class="info-value" id="game-moves">60</div>
                 </div>
             </div>
             <div class="info-box">
@@ -194,16 +121,25 @@
 
 <script>
 const CONFIG = {
-    gridSize: 6,
+    gridSizeX: 6, 
+    gridSizeY: 8, 
     cellSize: 80, 
     gap: 8,
     targetValue: 2048,
-    initialMoves: 150, // 初期手数（少し余裕をもたせる）
+    initialMoves: 60, 
     
     sizeMap: {
-        2: 1, 4: 1, 8: 1, 16: 1, 32: 1, 64: 1, 128: 1, 256: 1, 
-        512: 2, 1024: 2,                                       
-        2048: 3                                                
+        2: {w: 1, h: 1}, 
+        4: {w: 1, h: 1}, 
+        8: {w: 1, h: 1}, 
+        16: {w: 2, h: 1}, 
+        32: {w: 2, h: 1}, 
+        64: {w: 1, h: 2}, 
+        128: {w: 1, h: 2}, 
+        256: {w: 2, h: 2}, 
+        512: {w: 2, h: 2}, 
+        1024: {w: 2, h: 3}, 
+        2048: {w: 3, h: 3}  
     },
     
     initialPool: [
@@ -218,45 +154,70 @@ const CONFIG = {
         2, 2, 2, 2      
     ],
 
-    // パステル調の可愛いカラーパレット (マカロンカラー)
     colors: {
-        empty: "rgba(245, 238, 230, 0.6)", // 空マス: 半透明のクリーム色
-        2: "#ffcfd8",    // パステルピンク
-        4: "#fff2b2",    // パステルレモン
-        8: "#c7ebd1",    // パステルミント
-        16: "#cce2ff",   // パステルブルー
-        32: "#e2d5ff",   // パステルラベンダー
-        64: "#ffdec7",   // パステルオレンジ
-        128: "#ffb7c5",  // 濃いめピンク
-        256: "#ffe082",  // 濃いめイエロー
-        512: "#a7e8bd",  // 濃いめグリーン
-        1024: "#a3d2ff", // 濃いめブルー
-        2048: "#d5baff", // 濃いめパープル
-        textDark: "#8a7f75", // 数字の色（濃い文字）
-        textLight: "#fff"    // 数字の色（明るい文字）
+        empty: "rgba(245, 238, 230, 0.6)",
+        2: "#ffcfd8", 4: "#fff2b2", 8: "#c7ebd1", 16: "#cce2ff",
+        32: "#e2d5ff", 64: "#ffdec7", 128: "#ffb7c5", 256: "#ffe082",
+        512: "#a7e8bd", 1024: "#a3d2ff", 2048: "#d5baff",
+        textDark: "#8a7f75", textLight: "#fff"
     }
 };
 
 let state = {
-    tiles: [],
-    score: 0,
-    moves: 0, // 残り手数
+    tiles: [], score: 0, moves: 0,
     highScore: localStorage.getItem('mergeJamHighScore') || 0,
-    selectedId: null,
-    isGameOver: false,
-    tileCounter: 0
+    selectedId: null, isGameOver: false, tileCounter: 0,
+    invalidMerge: null // 【追加】マージ失敗時のゴースト表示用状態
 };
 
 let canvas, ctx;
 let animationFrameId;
 
+// 【追加】音響管理
+let audioCtx;
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function playSound(type) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    if (type === 'merge') {
+        // ピロリン♪（マージ成功音）
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'error') {
+        // コッ（マージ失敗音）
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    }
+}
+
 function init() {
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     
-    let boardPx = CONFIG.gap + (CONFIG.cellSize + CONFIG.gap) * CONFIG.gridSize;
-    canvas.width = boardPx;
-    canvas.height = boardPx;
+    let boardPxW = CONFIG.gap + (CONFIG.cellSize + CONFIG.gap) * CONFIG.gridSizeX;
+    let boardPxH = CONFIG.gap + (CONFIG.cellSize + CONFIG.gap) * CONFIG.gridSizeY;
+    canvas.width = boardPxW;
+    canvas.height = boardPxH;
     document.getElementById('title-highscore').innerText = state.highScore;
 
     bindEvents();
@@ -264,27 +225,28 @@ function init() {
 }
 
 function bindEvents() {
-    document.getElementById('start-btn').addEventListener('click', startGame);
-    document.getElementById('retry-btn').addEventListener('click', () => {
-        switchScreen('title-screen');
+    document.getElementById('start-btn').addEventListener('click', () => {
+        initAudio(); // ユーザー操作を機に音声を許可
+        startGame();
+    });
+    document.getElementById('retry-btn').addEventListener('click', () => { 
+        initAudio();
+        switchScreen('title-screen'); 
     });
 
     let startX = 0, startY = 0;
     
     function getGridCoords(clientX, clientY) {
         let rect = canvas.getBoundingClientRect();
-        let scaleX = canvas.width / rect.width;
-        let scaleY = canvas.height / rect.height;
-        let px = (clientX - rect.left) * scaleX;
-        let py = (clientY - rect.top) * scaleY;
-        return { px, py };
+        let scaleX = canvas.width / rect.width; let scaleY = canvas.height / rect.height;
+        return { px: (clientX - rect.left) * scaleX, py: (clientY - rect.top) * scaleY };
     }
 
     canvas.addEventListener('touchstart', (e) => {
+        initAudio();
         e.preventDefault();
         let coords = getGridCoords(e.touches[0].clientX, e.touches[0].clientY);
-        startX = coords.px; startY = coords.py;
-        handleSelect(startX, startY);
+        startX = coords.px; startY = coords.py; handleSelect(startX, startY);
     }, {passive: false});
 
     canvas.addEventListener('touchend', (e) => {
@@ -295,30 +257,22 @@ function bindEvents() {
 
     let isMouseDown = false;
     canvas.addEventListener('mousedown', (e) => {
+        initAudio();
         let coords = getGridCoords(e.clientX, e.clientY);
-        startX = coords.px; startY = coords.py;
-        isMouseDown = true;
-        handleSelect(startX, startY);
+        startX = coords.px; startY = coords.py; isMouseDown = true; handleSelect(startX, startY);
     });
     canvas.addEventListener('mouseup', (e) => {
         if(!isMouseDown) return;
-        isMouseDown = false;
-        let coords = getGridCoords(e.clientX, e.clientY);
+        isMouseDown = false; let coords = getGridCoords(e.clientX, e.clientY);
         handleSwipe(startX, startY, coords.px, coords.py);
     });
 
     window.addEventListener('keydown', (e) => {
         if(state.isGameOver || state.selectedId === null) return;
         let dx = 0, dy = 0;
-        if(e.key === 'ArrowUp') dy = -1;
-        else if(e.key === 'ArrowDown') dy = 1;
-        else if(e.key === 'ArrowLeft') dx = -1;
-        else if(e.key === 'ArrowRight') dx = 1;
-        
-        if(dx !== 0 || dy !== 0) {
-            e.preventDefault();
-            processMove(state.selectedId, dx, dy);
-        }
+        if(e.key === 'ArrowUp') dy = -1; else if(e.key === 'ArrowDown') dy = 1;
+        else if(e.key === 'ArrowLeft') dx = -1; else if(e.key === 'ArrowRight') dx = 1;
+        if(dx !== 0 || dy !== 0) { e.preventDefault(); processMove(state.selectedId, dx, dy); }
     });
 }
 
@@ -328,25 +282,18 @@ function switchScreen(screenId) {
 }
 
 function startGame() {
-    state.tiles = [];
-    state.score = 0;
-    state.moves = CONFIG.initialMoves; // 手数を初期化
-    state.selectedId = null;
-    state.isGameOver = false;
+    state.tiles = []; state.score = 0; state.moves = CONFIG.initialMoves;
+    state.selectedId = null; state.isGameOver = false; state.invalidMerge = null;
     updateUI();
     
     let sortedPool = [...CONFIG.initialPool].sort((a,b) => b - a);
     sortedPool.forEach(val => {
-        let size = CONFIG.sizeMap[val] || 1;
-        let placed = false;
-        let attempts = 0;
-        while(!placed && attempts < 2000) {
-            let gx = Math.floor(Math.random() * (CONFIG.gridSize - size + 1));
-            let gy = Math.floor(Math.random() * (CONFIG.gridSize - size + 1));
-            if(canPlace(gx, gy, size, null)) {
-                addTile(gx, gy, val);
-                placed = true;
-            }
+        let w = CONFIG.sizeMap[val].w; let h = CONFIG.sizeMap[val].h;
+        let placed = false; let attempts = 0;
+        while(!placed && attempts < 5000) {
+            let gx = Math.floor(Math.random() * (CONFIG.gridSizeX - w + 1));
+            let gy = Math.floor(Math.random() * (CONFIG.gridSizeY - h + 1));
+            if(canPlace(gx, gy, w, h, null)) { addTile(gx, gy, val); placed = true; }
             attempts++;
         }
     });
@@ -354,17 +301,18 @@ function startGame() {
 }
 
 function addTile(gx, gy, val) {
-    let size = CONFIG.sizeMap[val] || 1;
+    let w = CONFIG.sizeMap[val].w; let h = CONFIG.sizeMap[val].h;
     let px = CONFIG.gap + gx * (CONFIG.cellSize + CONFIG.gap);
     let py = CONFIG.gap + gy * (CONFIG.cellSize + CONFIG.gap);
-    state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, size });
+    // 【追加】shakeTimerを初期化
+    state.tiles.push({ id: state.tileCounter++, gx, gy, px, py, val, w, h, shakeTimer: 0 });
 }
 
-function canPlace(gx, gy, size, ignoreId) {
-    if (gx < 0 || gy < 0 || gx + size > CONFIG.gridSize || gy + size > CONFIG.gridSize) return false;
+function canPlace(gx, gy, w, h, ignoreId) {
+    if (gx < 0 || gy < 0 || gx + w > CONFIG.gridSizeX || gy + h > CONFIG.gridSizeY) return false;
     for (let t of state.tiles) {
         if (t.id === ignoreId) continue;
-        if (gx < t.gx + t.size && gx + size > t.gx && gy < t.gy + t.size && gy + size > t.gy) return false;
+        if (gx < t.gx + t.w && gx + w > t.gx && gy < t.gy + t.h && gy + h > t.gy) return false;
     }
     return true;
 }
@@ -373,13 +321,8 @@ function handleSelect(px, py) {
     if(state.isGameOver) return;
     let gx = Math.floor(px / (CONFIG.cellSize + CONFIG.gap));
     let gy = Math.floor(py / (CONFIG.cellSize + CONFIG.gap));
-    
-    let clickedTile = state.tiles.find(t => gx >= t.gx && gx < t.gx + t.size && gy >= t.gy && gy < t.gy + t.size);
-    if(clickedTile) {
-        state.selectedId = clickedTile.id;
-    } else {
-        state.selectedId = null;
-    }
+    let clickedTile = state.tiles.find(t => gx >= t.gx && gx < t.gx + t.w && gy >= t.gy && gy < t.gy + t.h);
+    state.selectedId = clickedTile ? clickedTile.id : null;
 }
 
 function handleSwipe(startX, startY, endX, endY) {
@@ -387,60 +330,59 @@ function handleSwipe(startX, startY, endX, endY) {
     let dx = endX - startX, dy = endY - startY;
     if(Math.max(Math.abs(dx), Math.abs(dy)) > 20) {
         let moveX = 0, moveY = 0;
-        if(Math.abs(dx) > Math.abs(dy)) moveX = dx > 0 ? 1 : -1;
-        else moveY = dy > 0 ? 1 : -1;
+        if(Math.abs(dx) > Math.abs(dy)) moveX = dx > 0 ? 1 : -1; else moveY = dy > 0 ? 1 : -1;
         processMove(state.selectedId, moveX, moveY);
     }
 }
 
 function processMove(tileId, dx, dy) {
-    if(state.moves <= 0) return; // 手数切れなら動かせない
+    if(state.moves <= 0) return; 
 
     let tile = state.tiles.find(t => t.id === tileId);
     if(!tile) return;
 
-    let currentGx = tile.gx;
-    let currentGy = tile.gy;
-    let targetGx = currentGx;
-    let targetGy = currentGy;
-    let hitTile = null;
-    let willMerge = false;
+    let currentGx = tile.gx; let currentGy = tile.gy;
+    let targetGx = currentGx; let targetGy = currentGy;
+    let hitTile = null; let willMerge = false;
 
     while(true) {
-        let nextGx = targetGx + dx;
-        let nextGy = targetGy + dy;
-
-        if(nextGx < 0 || nextGy < 0 || nextGx + tile.size > CONFIG.gridSize || nextGy + tile.size > CONFIG.gridSize) break; 
+        let nextGx = targetGx + dx; let nextGy = targetGy + dy;
+        if(nextGx < 0 || nextGy < 0 || nextGx + tile.w > CONFIG.gridSizeX || nextGy + tile.h > CONFIG.gridSizeY) break; 
 
         let cols = state.tiles.filter(t => t.id !== tile.id && 
-            nextGx < t.gx + t.size && nextGx + tile.size > t.gx && 
-            nextGy < t.gy + t.size && nextGy + tile.size > t.gy);
+            nextGx < t.gx + t.w && nextGx + tile.w > t.gx && 
+            nextGy < t.gy + t.h && nextGy + tile.h > t.gy);
 
         if(cols.length === 0) {
             targetGx = nextGx; targetGy = nextGy;
         } else if (cols.length === 1) {
             let target = cols[0];
             let isAligned = false;
-            if(dx !== 0 && targetGy === target.gy && tile.size === target.size) isAligned = true;
-            if(dy !== 0 && targetGx === target.gx && tile.size === target.size) isAligned = true;
+            if(dx !== 0 && targetGy === target.gy && tile.h === target.h) isAligned = true;
+            if(dy !== 0 && targetGx === target.gx && tile.w === target.w) isAligned = true;
 
             if(isAligned && tile.val === target.val) {
                 let newVal = tile.val * 2;
-                let newSize = CONFIG.sizeMap[newVal] || tile.size;
+                let newW = CONFIG.sizeMap[newVal].w; let newH = CONFIG.sizeMap[newVal].h;
                 let tempTiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
                 let canGrow = false;
                 let finalGx = target.gx; let finalGy = target.gy;
 
-                if (newSize === target.size) {
+                if (newW === target.w && newH === target.h) {
                     canGrow = true;
                 } else {
                     let candidates = [];
-                    for(let cy = target.gy - newSize + target.size; cy <= target.gy; cy++) {
-                        for(let cx = target.gx - newSize + target.size; cx <= target.gx; cx++) {
-                            if(cx >= 0 && cy >= 0 && cx + newSize <= CONFIG.gridSize && cy + newSize <= CONFIG.gridSize) {
+                    let minCx = target.gx - newW + 1;
+                    let maxCx = target.gx + target.w - 1;
+                    let minCy = target.gy - newH + 1;
+                    let maxCy = target.gy + target.h - 1;
+
+                    for(let cy = minCy; cy <= maxCy; cy++) {
+                        for(let cx = minCx; cx <= maxCx; cx++) {
+                            if(cx >= 0 && cy >= 0 && cx + newW <= CONFIG.gridSizeX && cy + newH <= CONFIG.gridSizeY) {
                                 let collision = false;
                                 for(let t of tempTiles) {
-                                    if(cx < t.gx + t.size && cx + newSize > t.gx && cy < t.gy + t.size && cy + newSize > t.gy) {
+                                    if(cx < t.gx + t.w && cx + newW > t.gx && cy < t.gy + t.h && cy + newH > t.gy) {
                                         collision = true; break;
                                     }
                                 }
@@ -459,19 +401,29 @@ function processMove(tileId, dx, dy) {
                     targetGx = nextGx; targetGy = nextGy;
                     hitTile = target; willMerge = true;
                     hitTile.finalGx = finalGx; hitTile.finalGy = finalGy;
+                } else {
+                    // 【追加】スペース不足でマージできない時の処理
+                    playSound('error'); // エラー音を鳴らす
+                    tile.shakeTimer = 20; // 20フレーム揺らす
+                    state.invalidMerge = { 
+                        gx: target.gx, 
+                        gy: target.gy, 
+                        w: newW, 
+                        h: newH, 
+                        timer: 30 // 30フレーム ゴーストを表示
+                    };
                 }
             }
             break; 
         } else { break; }
     }
 
-    // 実際に移動が発生した場合のみ手数を消費
     if(targetGx !== currentGx || targetGy !== currentGy) {
-        state.moves--; // 手数を減らす
+        state.moves--; 
         
         if(willMerge) {
-            let newVal = tile.val * 2;
-            state.score += newVal;
+            playSound('merge'); // 【追加】成功音を鳴らす
+            let newVal = tile.val * 2; state.score += newVal;
             state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== hitTile.id);
             let fGx = hitTile.finalGx !== undefined ? hitTile.finalGx : hitTile.gx;
             let fGy = hitTile.finalGy !== undefined ? hitTile.finalGy : hitTile.gy;
@@ -482,25 +434,19 @@ function processMove(tileId, dx, dy) {
             tile.gx = targetGx; tile.gy = targetGy;
         }
         
-        updateUI();
-        checkGameOver(); // 詰み or 手数切れチェック
+        updateUI(); checkGameOver();
     }
 }
 
-// 詰み判定と手数切れ判定を統合
 function checkGameOver() {
-    if (state.moves <= 0) {
-        endGame(false); // 手数切れでゲームオーバー
-        return;
-    }
-
+    if (state.moves <= 0) { endGame(false); return; }
     let canMoveAny = false;
     for(let t of state.tiles) {
         for(let dir of [[0,-1], [0,1], [-1,0], [1,0]]) {
             let tgx = t.gx + dir[0], tgy = t.gy + dir[1];
-            if(tgx >= 0 && tgy >= 0 && tgx + t.size <= CONFIG.gridSize && tgy + t.size <= CONFIG.gridSize) {
-                let cols = state.tiles.filter(ot => ot.id !== t.id && tgx < ot.gx + ot.size && tgx + t.size > ot.gx && tgy < ot.gy + t.size && tgy + t.size > ot.gy);
-                if(cols.length === 0 || (cols.length === 1 && cols[0].val === t.val && cols[0].size === t.size)) canMoveAny = true; 
+            if(tgx >= 0 && tgy >= 0 && tgx + t.w <= CONFIG.gridSizeX && tgy + t.h <= CONFIG.gridSizeY) {
+                let cols = state.tiles.filter(ot => ot.id !== t.id && tgx < ot.gx + ot.w && tgx + t.w > ot.gx && tgy < ot.gy + t.h && tgy + t.h > ot.gy);
+                if(cols.length === 0 || (cols.length === 1 && cols[0].val === t.val && cols[0].w === t.w && cols[0].h === t.h)) canMoveAny = true; 
             }
         }
     }
@@ -509,7 +455,7 @@ function checkGameOver() {
 
 function updateUI() {
     document.getElementById('game-score').innerText = state.score;
-    document.getElementById('game-moves').innerText = state.moves; // 手数表示更新
+    document.getElementById('game-moves').innerText = state.moves;
     if(state.score > state.highScore) {
         state.highScore = state.score;
         localStorage.setItem('mergeJamHighScore', state.highScore);
@@ -528,102 +474,102 @@ function endGame(isWin) {
 }
 
 function renderLoop() {
-    // 盤面背景をクリア（透明にする）
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // 空マスの描画（可愛らしく丸く、少し立体的に）
-    for(let y=0; y<CONFIG.gridSize; y++) {
-        for(let x=0; x<CONFIG.gridSize; x++) {
+    for(let y=0; y<CONFIG.gridSizeY; y++) {
+        for(let x=0; x<CONFIG.gridSizeX; x++) {
             let px = CONFIG.gap + x * (CONFIG.cellSize + CONFIG.gap);
             let py = CONFIG.gap + y * (CONFIG.cellSize + CONFIG.gap);
             drawRoundedRect(ctx, px, py, CONFIG.cellSize, CONFIG.cellSize, 12, CONFIG.colors.empty, false);
         }
     }
 
-    // パネルの描画
     state.tiles.forEach(tile => {
         tile.px += (CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap) - tile.px) * 0.4;
         tile.py += (CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap) - tile.py) * 0.4;
 
-        let drawSize = tile.size * CONFIG.cellSize + (tile.size - 1) * CONFIG.gap;
+        // 【追加】揺らす処理の計算（見た目の座標だけずらす）
+        let renderPx = tile.px;
+        if (tile.shakeTimer > 0) {
+            tile.shakeTimer--;
+            renderPx += Math.sin(tile.shakeTimer) * 4; // 横方向に揺らす
+        }
+
+        let drawSizeW = tile.w * CONFIG.cellSize + (tile.w - 1) * CONFIG.gap;
+        let drawSizeH = tile.h * CONFIG.cellSize + (tile.h - 1) * CONFIG.gap;
         let bgColor = CONFIG.colors[tile.val] || "#3c3a32";
-        let radius = tile.size > 1 ? 20 : 12; // 大きいパネルはより丸く
+        let radius = (tile.w > 1 || tile.h > 1) ? 20 : 12;
 
-        // パネル本体（立体的な影付き）
-        drawRoundedRect(ctx, tile.px, tile.py, drawSize, drawSize, radius, bgColor, true);
+        drawRoundedRect(ctx, renderPx, tile.py, drawSizeW, drawSizeH, radius, bgColor, true);
 
-        // 数字の描画（丸文字フォントで可愛く）
         ctx.fillStyle = (tile.val <= 64) ? CONFIG.colors.textDark : CONFIG.colors.textLight;
-        let fontSize = CONFIG.cellSize * 0.5 * (tile.size * 0.8);
-        ctx.font = `800 ${fontSize}px 'M PLUS Rounded 1c', Arial, sans-serif`; // 丸文字フォント指定
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        // 文字にも少し影をつけて立体感を出す
-        ctx.shadowColor = "rgba(0,0,0,0.1)";
-        ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; ctx.shadowBlur = 2;
-        ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2 + (fontSize*0.05));
-        ctx.shadowColor = "transparent"; // 影のリセット
+        let minSide = Math.min(tile.w, tile.h);
+        let fontSize = CONFIG.cellSize * 0.5 * (minSide === 1 && Math.max(tile.w, tile.h) > 1 ? 1.2 : minSide * 0.85);
+        ctx.font = `800 ${fontSize}px 'M PLUS Rounded 1c', Arial, sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0,0,0,0.1)"; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; ctx.shadowBlur = 2;
+        ctx.fillText(tile.val, renderPx + drawSizeW / 2, tile.py + drawSizeH / 2 + (fontSize*0.05));
+        ctx.shadowColor = "transparent";
 
-        // 選択中のハイライト（発光するように変更）
         if(state.selectedId === tile.id) {
-            ctx.save();
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 4;
-            ctx.shadowColor = bgColor; // パネルの色で発光
-            ctx.shadowBlur = 15;
-            drawRoundedRectPath(ctx, tile.px - 2, tile.py - 2, drawSize + 4, drawSize + 4, radius + 2);
-            ctx.stroke();
-            ctx.restore();
+            ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
+            ctx.shadowColor = bgColor; ctx.shadowBlur = 15;
+            drawRoundedRectPath(ctx, renderPx - 2, tile.py - 2, drawSizeW + 4, drawSizeH + 4, radius + 2);
+            ctx.stroke(); ctx.restore();
         }
     });
+
+    // 【追加】マージ失敗時のゴースト（赤枠＆バツ印）の描画
+    if (state.invalidMerge && state.invalidMerge.timer > 0) {
+        state.invalidMerge.timer--;
+        let ig = state.invalidMerge;
+        let px = CONFIG.gap + ig.gx * (CONFIG.cellSize + CONFIG.gap);
+        let py = CONFIG.gap + ig.gy * (CONFIG.cellSize + CONFIG.gap);
+        let w = ig.w * CONFIG.cellSize + (ig.w - 1) * CONFIG.gap;
+        let h = ig.h * CONFIG.cellSize + (ig.h - 1) * CONFIG.gap;
+
+        ctx.save();
+        ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
+        ctx.strokeStyle = "#e74c3c";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 8]); // 点線にする
+        drawRoundedRectPath(ctx, px, py, w, h, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#e74c3c";
+        ctx.font = "bold 40px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("×", px + w / 2, py + h / 2);
+        ctx.restore();
+    }
 
     animationFrameId = requestAnimationFrame(renderLoop);
 }
 
-// 角丸長方形を描画するヘルパー関数（影付き対応）
 function drawRoundedRect(ctx, x, y, width, height, radius, color, hasShadow) {
     ctx.save();
-    if (hasShadow) {
-        ctx.shadowColor = "rgba(0, 0, 0, 0.15)"; // 柔らかい影
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 6;
-        ctx.shadowBlur = 8;
-    }
-    ctx.fillStyle = color;
-    drawRoundedRectPath(ctx, x, y, width, height, radius);
-    ctx.fill();
+    if (hasShadow) { ctx.shadowColor = "rgba(0, 0, 0, 0.15)"; ctx.shadowOffsetY = 6; ctx.shadowBlur = 8; }
+    ctx.fillStyle = color; drawRoundedRectPath(ctx, x, y, width, height, radius); ctx.fill();
     
     if (hasShadow) {
-        // 下部に少し濃い色を重ねて厚みを表現（簡易的な立体感）
-        ctx.shadowColor = "transparent";
-        ctx.globalCompositeOperation = "source-atop"; // 描画領域内のみに重ねる
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-        ctx.beginPath();
-        ctx.moveTo(x, y + height - radius);
-        ctx.arcTo(x, y + height, x + radius, y + height, radius);
-        ctx.lineTo(x + width - radius, y + height);
-        ctx.arcTo(x + width, y + height, x + width, y + height - radius, radius);
-        ctx.lineTo(x + width, y + height - radius * 0.5);
-        ctx.lineTo(x, y + height - radius * 0.5);
-        ctx.closePath();
-        ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.globalCompositeOperation = "source-atop";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; ctx.beginPath();
+        ctx.moveTo(x, y + height - radius); ctx.arcTo(x, y + height, x + radius, y + height, radius);
+        ctx.lineTo(x + width - radius, y + height); ctx.arcTo(x + width, y + height, x + width, y + height - radius, radius);
+        ctx.lineTo(x + width, y + height - radius * 0.5); ctx.lineTo(x, y + height - radius * 0.5);
+        ctx.closePath(); ctx.fill();
     }
     ctx.restore();
 }
 
-// 角丸のパスを定義するヘルパー関数
 function drawRoundedRectPath(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.arcTo(x + width, y, x + width, y + radius, radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
-    ctx.lineTo(x + radius, y + height);
-    ctx.arcTo(x, y + height, x, y + height - radius, radius);
-    ctx.lineTo(x, y + radius);
-    ctx.arcTo(x, y, x + radius, y, radius);
-    ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
+    ctx.arcTo(x + width, y, x + width, y + radius, radius); ctx.lineTo(x + width, y + height - radius);
+    ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius); ctx.lineTo(x + radius, y + height);
+    ctx.arcTo(x, y + height, x, y + height - radius, radius); ctx.lineTo(x, y + radius);
+    ctx.arcTo(x, y, x + radius, y, radius); ctx.closePath();
 }
 
 init();
