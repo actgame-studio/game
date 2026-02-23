@@ -10,7 +10,7 @@
         
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #f8e1e7; /* 優しいピンク背景 */
+            background-color: #f8e1e7;
             touch-action: none;
             display: flex; justify-content: center; align-items: center;
             font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
@@ -30,7 +30,7 @@
         
         #top-ui {
             flex: 0 0 calc(100% * 90 / 840);
-            background: #fff0f5; /* UI部分はほんのり色付け */
+            background: #fff0f5;
             border-bottom: 3px solid #f8bbd0;
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 15px;
@@ -135,7 +135,6 @@
 const CONFIG = {
     width: 440, height: 750, radius: 20, speed: 20,
     cols: 11, rows: 20, startRows: 8,
-    // 視認性を高めたマカロンカラーに変更
     colors: ['#ff85a2', '#6bc1ff', '#69e294', '#fce258', '#b882f8'],
     turnsToDrop: 4
 };
@@ -380,8 +379,10 @@ function triggerChainSpecials(clearedBubbles, skipPos = null) {
     }
 }
 
+// 🌟 爆発音をポップな「ポォォンッ！」に変更 🌟
 function explodeBomb(r, c, triggerDrop = true) {
-    playTone(100, 'square', 0.3, 0.2); shakeTime = 10;
+    playTone(350, 'triangle', 0.2, 0.3); 
+    shakeTime = 10;
     let blownUp = []; let area = [{r, c}, ...getNeighbors(r, c)];
     let extendedArea = [...area];
     for (let n of area) extendedArea.push(...getNeighbors(n.r, n.c));
@@ -395,8 +396,10 @@ function explodeBomb(r, c, triggerDrop = true) {
     addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
+// 🌟 雷の音を魔法っぽい「ピュイィィン！」に変更 🌟
 function explodeRow(r, c, triggerDrop = true) {
-    playTone(300, 'sawtooth', 0.2, 0.2); shakeTime = 10;
+    playTone(600, 'sine', 0.1, 0.2); setTimeout(()=>playTone(800, 'sine', 0.15, 0.2), 50);
+    shakeTime = 10;
     let blownUp = []; let colsInRow = ((r + gridOffset) % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
     if (grid[r] && grid[r][c] !== undefined) grid[r][c] = null;
     for (let col = 0; col < colsInRow; col++) {
@@ -408,11 +411,13 @@ function explodeRow(r, c, triggerDrop = true) {
     addScore(blownUp.length * 30); if (triggerDrop) dropFloatingBubbles(); return blownUp;
 }
 
+// 🌟 カラーボムの音をキラキラした「キラーン✨」に変更 🌟
 function explodeColorBomb(r, c, triggerDrop = true) {
     let targetColor = -1;
     for (let n of getNeighbors(r, c)) { let t = grid[n.r][n.c]; if (t !== null && t < 5) { targetColor = t; break; } }
     if (targetColor === -1) targetColor = Math.floor(Math.random()*5);
-    playTone(800, 'sawtooth', 0.4, 0.1); shakeTime = 15; let blownUp = [];
+    playTone(1000, 'sine', 0.1, 0.15); setTimeout(()=>playTone(1200, 'sine', 0.1, 0.15), 80); setTimeout(()=>playTone(1500, 'sine', 0.2, 0.1), 160);
+    shakeTime = 15; let blownUp = [];
     if (grid[r] && grid[r][c] !== undefined) grid[r][c] = null;
     let pos = getGridPos(r, c); createParticles(pos.x, pos.y, getColor(9));
 
@@ -495,8 +500,6 @@ function checkTurnDrop(matchMade) {
         for(let c=0; c<colsInRow; c++) { let rand = Math.random(); if (rand < 0.05) newRow[c] = 5; else newRow[c] = Math.floor(Math.random() * 5); }
         grid.unshift(newRow); grid.pop(); 
         shakeTime = 10; 
-        
-        // 🌟 天井降下音を「可愛い泡の音」に変更 🌟
         playTone(400, 'sine', 0.1, 0.2); 
         setTimeout(() => playTone(500, 'sine', 0.15, 0.2), 100);
     }
@@ -533,31 +536,56 @@ function getColor(type) {
     return '#fff';
 }
 
+// 🌟 色を暗くするヘルパー関数を追加（アウトライン用） 🌟
+function darkenColor(color, amount) {
+    let usePound = false;
+    if (color[0] == "#") { color = color.slice(1); usePound = true; }
+    let num = parseInt(color, 16);
+    let r = (num >> 16) - amount; if (r < 0) r = 0;
+    let b = ((num >> 8) & 0x00FF) - amount; if (b < 0) b = 0;
+    let g = (num & 0x0000FF) - amount; if (g < 0) g = 0;
+    return (usePound?"#":"") + (g | (b << 8) | (r << 16)).toString(16).padStart(6,'0');
+}
+
 function createParticles(x, y, color) {
     for (let i = 0; i < 8; i++) particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10 - 2, color: color, life: 1.0 });
 }
 function spawnText(x, y, text, color, maxLife = 40, size = 20) { floatTexts.push({x, y, text, color, life: maxLife, maxLife, size}); }
 
-// === マシュマロ質感の立体描画 ===
+// === マシュマロ質感＋くっきりアウトライン描画 ===
 function drawBubbleEx(x, y, type, radius) {
-    ctx.beginPath(); ctx.arc(x, y, radius - 2, 0, Math.PI * 2);
     let baseColor = getColor(type);
+    
+    // 1. ベースの塗り
+    ctx.beginPath(); ctx.arc(x, y, radius - 1.5, 0, Math.PI * 2);
     ctx.fillStyle = baseColor; ctx.fill();
 
+    // 2. マシュマロ風の柔らかいハイライトと影
     if (type < 5 || type >= 6) {
         let grad = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');   
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');   
         grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.5)'); 
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.05)');        
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.1)');        
         ctx.fillStyle = grad; ctx.fill();
         
+        // ツヤ
         ctx.beginPath();
         ctx.ellipse(x - radius * 0.3, y - radius * 0.3, radius * 0.2, radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; ctx.fill();
     }
 
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+    // 🌟 3. 同系色の濃いアウトラインを描画 🌟
+    let outlineColor;
+    if (type === 5) outlineColor = '#78909c'; // 石は固定色
+    else if (baseColor.startsWith('#')) outlineColor = darkenColor(baseColor, 40); // 通常色を暗くする
+    else outlineColor = 'rgba(0,0,0,0.2)'; // フォールバック
 
+    ctx.lineWidth = 2; // 少し細くしてシャープに
+    ctx.strokeStyle = outlineColor; 
+    ctx.beginPath(); ctx.arc(x, y, radius - 1, 0, Math.PI * 2); // 塗りとズレないように調整
+    ctx.stroke();
+
+    // 4. アイコン描画
     if (type === 5) {
         ctx.fillStyle = '#b0bec5'; ctx.fillRect(x-radius*0.5, y-radius*0.5, radius, radius);
         ctx.strokeStyle = '#78909c'; ctx.lineWidth = 2; ctx.strokeRect(x-radius*0.5, y-radius*0.5, radius, radius);
@@ -571,7 +599,6 @@ function drawBubbleEx(x, y, type, radius) {
 }
 
 function drawGame() {
-    // 🌟 描画領域の背景を少し色味のあるピンクグレーにしてコントラスト確保 🌟
     ctx.fillStyle = '#fbf0f4'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.save();
