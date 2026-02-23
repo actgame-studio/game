@@ -5,637 +5,665 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HTML5 Bubble Shooter</title>
     <style>
-        /* =========================================
-           基本スタイル・レスポンシブ要件
-        ========================================= */
+        /* === CSS: レスポンシブ・UI・デフォルトイベント無効化 === */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
         body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #222; color: #fff;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            /* スクロール等のデフォルトタッチアクションを無効化 */
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* スクロール防止 */
-            touch-action: none; /* デフォルトのタッチ操作を無効化 */
-            display: flex; justify-content: center; align-items: center;
         }
 
         #game-wrapper {
             position: relative;
-            width: 100%; max-width: 500px; /* PCでは最大500px */
-            aspect-ratio: 3 / 4; /* スマホ・PC共通の画面比率 */
-            background-color: #333;
+            width: 100%;
+            max-width: 400px; /* PCでの最大幅 */
+            height: 100%;
+            max-height: 600px;
+            aspect-ratio: 2 / 3;
+            background-color: #2c3e50;
             box-shadow: 0 0 20px rgba(0,0,0,0.8);
             overflow: hidden;
         }
 
         canvas {
-            display: block; width: 100%; height: 100%;
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* アスペクト比を維持してスケーリング */
         }
 
-        /* =========================================
-           UIオーバーレイレイヤー
-        ========================================= */
-        .screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(0, 0, 0, 0.7);
-            transition: opacity 0.3s;
+        /* UIオーバーレイ */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
             z-index: 10;
+            transition: opacity 0.3s;
         }
+
         .hidden {
-            opacity: 0; pointer-events: none;
+            display: none !important;
         }
-        
-        h1 { margin: 0 0 20px; font-size: 2.5rem; text-align: center; text-shadow: 2px 2px 4px #000; }
-        .score-display { font-size: 1.2rem; margin-bottom: 30px; text-align: center; }
-        
-        button {
-            padding: 15px 30px; font-size: 1.2rem; font-weight: bold;
-            color: #fff; background: #e74c3c; border: none; border-radius: 8px;
-            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+
+        h1 { margin: 0 0 20px 0; font-size: 2.5rem; text-shadow: 2px 2px 4px #000; text-align: center; }
+        h2 { margin: 0 0 10px 0; font-size: 2rem; color: #f1c40f; }
+        p { margin: 5px 0; font-size: 1.2rem; }
+
+        .btn {
+            margin-top: 30px;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background: #e74c3c;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             transition: transform 0.1s, background 0.2s;
         }
-        button:active { transform: translateY(2px); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-        button:hover { background: #c0392b; }
+        .btn:active {
+            transform: scale(0.95);
+            background: #c0392b;
+        }
 
-        /* プレイ中のヘッダー */
+        /* プレイ中のHUD */
         #hud {
-            position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
-            box-sizing: border-box; display: flex; justify-content: space-between;
-            font-size: 1.2rem; font-weight: bold; z-index: 5; pointer-events: none;
-            text-shadow: 1px 1px 2px #000;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            z-index: 5;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
 <div id="game-wrapper">
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="hud">
-        <div>Score: <span id="hud-score">0</span></div>
-        <div>High: <span id="hud-highscore">0</span></div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    
+    <div id="hud" class="hidden">
+        <div>SCORE: <span id="hud-score">0</span></div>
+        <div>HIGH: <span id="hud-highscore">0</span></div>
     </div>
 
-    <div id="screen-title" class="screen">
-        <h1>Bubble Shooter</h1>
-        <div class="score-display">High Score: <span id="title-highscore">0</span></div>
-        <button id="btn-start">ゲームスタート</button>
+    <div id="screen-title" class="ui-layer">
+        <h1>BUBBLE<br>SHOOTER</h1>
+        <p>High Score: <span id="title-highscore">0</span></p>
+        <button class="btn" id="btn-start">GAME START</button>
     </div>
 
-    <div id="screen-result" class="screen hidden">
-        <h1 id="result-title">Game Over</h1>
-        <div class="score-display">
-            Score: <span id="result-score">0</span><br>
-            High Score: <span id="result-highscore">0</span>
-        </div>
-        <button id="btn-retry">もう一度遊ぶ</button>
+    <div id="screen-result" class="ui-layer hidden">
+        <h2 id="result-title">GAME OVER</h2>
+        <p>Score: <span id="result-score">0</span></p>
+        <p>High Score: <span id="result-highscore">0</span></p>
+        <button class="btn" id="btn-retry">もう一度遊ぶ</button>
     </div>
 </div>
 
 <script>
 /**
- * =========================================================
- * 設定と一元管理 (CONFIG)
- * =========================================================
- * ゲームバランスや画像パスなどの設定をここにまとめます。
+ * ==========================================
+ * CONFIG: ゲーム設定の一元化
+ * ==========================================
  */
 const CONFIG = {
-    // 画面内部解像度（レスポンシブなCSSとは別に、描画の基準となるサイズ）
-    CANVAS_WIDTH: 600,
-    CANVAS_HEIGHT: 800,
+    // 画面の論理解像度（内部計算用）
+    width: 400,
+    height: 600,
     
-    // グリッド・バブル設定
-    COLS: 8,                    // 1列あたりの最大バブル数
-    ROWS: 12,                   // 初期配置の行数
-    MAX_ROWS: 18,               // デッドラインとなる行数
-    BUBBLE_SPEED: 18,           // 発射時のバブルの速度
+    // バブル設定
+    radius: 20,              // バブルの半径
+    speed: 16,               // 発射スピード
+    colors: ['#FF4136', '#0074D9', '#2ECC40', '#FFDC00', '#B10DC9'], // CSS代替描画用の色
     
-    // バブルの種類とフォールバック色
-    // ポップな色に変更
-    BUBBLE_TYPES: [
-        { id: 0, color: '#FF6B6B', src: 'sprite/bubble_red.png' },    // ポップな赤
-        { id: 1, color: '#51CF66', src: 'sprite/bubble_green.png' },  // ポップな緑
-        { id: 2, color: '#339AF0', src: 'sprite/bubble_blue.png' },   // ポップな青
-        { id: 3, color: '#FCC419', src: 'sprite/bubble_yellow.png' }, // ポップな黄
-        { id: 4, color: '#BE4BDB', src: 'sprite/bubble_purple.png' }  // ポップな紫
-    ],
-
-    // スコア設定
-    SCORE_POP: 10,      // 1個消した時のスコア
-    SCORE_DROP: 30      // 落下させた時の1個あたりのスコア
-};
-
-// 派生値の計算
-CONFIG.BUBBLE_RADIUS = CONFIG.CANVAS_WIDTH / (CONFIG.COLS * 2);
-CONFIG.ROW_HEIGHT = CONFIG.BUBBLE_RADIUS * Math.sqrt(3); // 六角形配置の行の高さ
-
-/**
- * =========================================================
- * アセット管理 (フォールバック処理・拡張性)
- * =========================================================
- */
-const Assets = {
-    images: {},
-    load: function() {
-        CONFIG.BUBBLE_TYPES.forEach(type => {
-            const img = new Image();
-            img.src = type.src;
-            img.onload = () => { img.loaded = true; };
-            // エラー時はloadedフラグを立てず、代替描画に切り替える
-            img.onerror = () => { 
-                console.warn(`画像読み込み失敗: ${type.src}。代替図形を使用します。`);
-                img.loaded = false; 
-            };
-            this.images[type.id] = img;
-        });
+    // アセット設定（同じディレクトリのspriteフォルダに配置するだけ）
+    images: {
+        0: 'sprite/red.png',
+        1: 'sprite/blue.png',
+        2: 'sprite/green.png',
+        3: 'sprite/yellow.png',
+        4: 'sprite/purple.png'
     },
-    // バブル描画関数（画像があれば画像、なければCanvasの色と図形で描画）
-    drawBubble: function(ctx, x, y, radius, typeId) {
-        const img = this.images[typeId];
-        if (img && img.loaded) {
-            // 画像欠けやアスペクト比の崩れを防ぐため、枠に合わせて描画
-            ctx.drawImage(img, x - radius, y - radius, radius * 2, radius * 2);
-        } else {
-            // 代替描画：グラデーション付きの円
-            const color = CONFIG.BUBBLE_TYPES.find(t => t.id === typeId).color;
-            const grad = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/10, x, y, radius);
-            grad.addColorStop(0, '#fff');
-            grad.addColorStop(0.2, color);
-            grad.addColorStop(1, '#000'); // 影をつける
-            
-            ctx.beginPath();
-            ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
-            ctx.fillStyle = grad;
-            ctx.fill();
-            ctx.strokeStyle = "rgba(0,0,0,0.3)";
-            ctx.stroke();
-            ctx.closePath();
-        }
-    }
+    
+    // グリッド設定
+    cols: 10,                // 1行の最大列数
+    rows: 15,                // 画面に入る最大行数
+    startRows: 6             // 初期状態のバブル行数
 };
 
 /**
- * =========================================================
- * ゲーム状態とシステム変数
- * =========================================================
+ * ==========================================
+ * グローバル変数・状態管理
+ * ==========================================
  */
-const STATE = { TITLE: 0, PLAYING: 1, RESULT: 2 };
-let currentState = STATE.TITLE;
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = CONFIG.CANVAS_WIDTH;
-canvas.height = CONFIG.CANVAS_HEIGHT;
 
-let grid = [];      // 盤面のバブル配列
+let gameState = 'title'; // 'title', 'playing', 'result'
 let score = 0;
-let highScore = localStorage.getItem('bubbleShooterHighScore') || 0;
-let isAiming = false;
-let aimAngle = 0;
-let shooterPos = { x: CONFIG.CANVAS_WIDTH / 2, y: CONFIG.CANVAS_HEIGHT - CONFIG.BUBBLE_RADIUS * 2 };
-let currentBubble = null;   // 発射準備・発射中のバブル
-let nextBubbleType = 0;     // 次のバブルの色
-let isFiring = false;       // 発射中フラグ
-let particles = [];         // エフェクト用
+let highScore = parseInt(localStorage.getItem('bubbleHighScore')) || 0;
 
-// UI要素
-const uiTitle = document.getElementById('screen-title');
-const uiResult = document.getElementById('screen-result');
-const hudScore = document.getElementById('hud-score');
-const hudHighscore = document.getElementById('hud-highscore');
+let grid = [];
+let currentBubble = null;
+let flyingBubble = null;
 
-// 初期設定
-document.getElementById('title-highscore').innerText = highScore;
-hudHighscore.innerText = highScore;
-Assets.load();
+// 入力座標
+let inputX = CONFIG.width / 2;
+let inputY = CONFIG.height / 2;
+let isPressing = false;
+
+// プリロードされた画像オブジェクトの格納先
+const loadedImages = {};
 
 /**
- * =========================================================
- * ゲームロジック関数
- * =========================================================
+ * ==========================================
+ * 初期化・アセットロード
+ * ==========================================
  */
-
-// ランダムなバブルタイプを取得
-function getRandomBubbleType() {
-    return Math.floor(Math.random() * CONFIG.BUBBLE_TYPES.length);
+function preloadImages() {
+    for (const key in CONFIG.images) {
+        const img = new Image();
+        img.src = CONFIG.images[key];
+        img.onload = () => { loadedImages[key] = img; };
+        // ロード失敗時は null のままにし、描画時にCSS描画へフォールバックする
+        img.onerror = () => { loadedImages[key] = null; console.warn(`Image missing: ${CONFIG.images[key]}. Falling back to CSS drawing.`); };
+    }
 }
 
-// グリッド座標からキャンバス座標(x,y)を計算
-function getXYFromGrid(r, c) {
-    const isOddRow = (r % 2 === 1);
-    const x = c * CONFIG.BUBBLE_RADIUS * 2 + CONFIG.BUBBLE_RADIUS + (isOddRow ? CONFIG.BUBBLE_RADIUS : 0);
-    const y = r * CONFIG.ROW_HEIGHT + CONFIG.BUBBLE_RADIUS;
-    return { x, y };
-}
-
-// キャンバス座標(x,y)から最も近いグリッド座標(r,c)を計算
-function getGridFromXY(x, y) {
-    let r = Math.round((y - CONFIG.BUBBLE_RADIUS) / CONFIG.ROW_HEIGHT);
-    r = Math.max(0, r);
-    const isOddRow = (r % 2 === 1);
-    let c = Math.round((x - CONFIG.BUBBLE_RADIUS - (isOddRow ? CONFIG.BUBBLE_RADIUS : 0)) / (CONFIG.BUBBLE_RADIUS * 2));
-    c = Math.max(0, Math.min(c, isOddRow ? CONFIG.COLS - 2 : CONFIG.COLS - 1));
-    return { r, c };
-}
-
-// 周囲の隣接セル座標を取得
-function getNeighbors(r, c) {
-    const isOdd = r % 2 === 1;
-    const directions = isOdd ? 
-        [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]] : 
-        [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]];
+function initGame() {
+    score = 0;
+    updateHUD();
+    grid = [];
     
+    // グリッドの初期生成
+    for (let r = 0; r < CONFIG.rows; r++) {
+        grid[r] = [];
+        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            if (r < CONFIG.startRows) {
+                grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length);
+            } else {
+                grid[r][c] = null;
+            }
+        }
+    }
+    
+    spawnBubble();
+    flyingBubble = null;
+}
+
+/**
+ * ==========================================
+ * バブル関連のロジック
+ * ==========================================
+ */
+// 座標計算関連
+const rowHeight = CONFIG.radius * Math.sqrt(3);
+
+function getGridPos(r, c) {
+    const xOffset = (r % 2 === 0) ? CONFIG.radius : CONFIG.radius * 2;
+    return {
+        x: c * (CONFIG.radius * 2) + xOffset,
+        y: r * rowHeight + CONFIG.radius
+    };
+}
+
+function spawnBubble() {
+    currentBubble = {
+        x: CONFIG.width / 2,
+        y: CONFIG.height - CONFIG.radius,
+        color: Math.floor(Math.random() * CONFIG.colors.length)
+    };
+}
+
+function fireBubble() {
+    if (gameState !== 'playing' || flyingBubble !== null || !currentBubble) return;
+
+    let dx = inputX - currentBubble.x;
+    let dy = inputY - currentBubble.y;
+    let angle = Math.atan2(dy, dx);
+    
+    // 真横や下へは撃てないように制限
+    if (angle > -0.1) angle = -0.1;
+    if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
+
+    flyingBubble = {
+        x: currentBubble.x,
+        y: currentBubble.y,
+        vx: Math.cos(angle) * CONFIG.speed,
+        vy: Math.sin(angle) * CONFIG.speed,
+        color: currentBubble.color
+    };
+    
+    currentBubble = null; // 次の弾の生成はスナップ後に行う
+}
+
+/**
+ * ==========================================
+ * 衝突・スナップ・マッチング判定
+ * ==========================================
+ */
+function updatePhysics() {
+    if (!flyingBubble) return;
+
+    flyingBubble.x += flyingBubble.vx;
+    flyingBubble.y += flyingBubble.vy;
+
+    // 左右の壁反射
+    if (flyingBubble.x - CONFIG.radius <= 0) {
+        flyingBubble.x = CONFIG.radius;
+        flyingBubble.vx *= -1;
+    } else if (flyingBubble.x + CONFIG.radius >= CONFIG.width) {
+        flyingBubble.x = CONFIG.width - CONFIG.radius;
+        flyingBubble.vx *= -1;
+    }
+
+    let isCollision = false;
+
+    // 天井衝突
+    if (flyingBubble.y - CONFIG.radius <= 0) {
+        isCollision = true;
+    } else {
+        // 既存バブルとの衝突
+        for (let r = 0; r < CONFIG.rows; r++) {
+            let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            for (let c = 0; c < colsInRow; c++) {
+                if (grid[r] && grid[r][c] !== null) {
+                    let pos = getGridPos(r, c);
+                    let dx = flyingBubble.x - pos.x;
+                    let dy = flyingBubble.y - pos.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    // めり込み防止のため少し小さめの判定
+                    if (dist < CONFIG.radius * 2 - 2) {
+                        isCollision = true;
+                        break;
+                    }
+                }
+            }
+            if (isCollision) break;
+        }
+    }
+
+    if (isCollision) {
+        snapToGrid();
+    }
+}
+
+function snapToGrid() {
+    // 飛翔バブルに最も近い「配置可能な空きセル」を探す
+    let minDist = Infinity;
+    let bestR = -1;
+    let bestC = -1;
+
+    for (let r = 0; r < CONFIG.rows; r++) {
+        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            if (grid[r] && grid[r][c] === null) {
+                // 天井、または他のバブルに隣接しているセルのみを候補とする
+                let isValid = (r === 0);
+                if (!isValid) {
+                    let neighbors = getNeighbors(r, c);
+                    isValid = neighbors.some(n => grid[n.r][n.c] !== null);
+                }
+
+                if (isValid) {
+                    let pos = getGridPos(r, c);
+                    let dx = flyingBubble.x - pos.x;
+                    let dy = flyingBubble.y - pos.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        bestR = r;
+                        bestC = c;
+                    }
+                }
+            }
+        }
+    }
+
+    if (bestR !== -1 && bestC !== -1) {
+        grid[bestR][bestC] = flyingBubble.color;
+        checkMatches(bestR, bestC, flyingBubble.color);
+        checkWinLose();
+    }
+    
+    flyingBubble = null;
+    if (gameState === 'playing') spawnBubble();
+}
+
+function getNeighbors(r, c) {
     let neighbors = [];
-    for (let dir of directions) {
-        let nr = r + dir[0];
-        let nc = c + dir[1];
-        if (nr >= 0 && nr < CONFIG.MAX_ROWS) {
-            let maxCols = (nr % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-            if (nc >= 0 && nc < maxCols) {
-                neighbors.push({ r: nr, c: nc });
+    const dirsEven = [[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]];
+    const dirsOdd  = [[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]];
+    const dirs = (r % 2 === 0) ? dirsEven : dirsOdd;
+
+    for (let d of dirs) {
+        let nr = r + d[0];
+        let nc = c + d[1];
+        if (nr >= 0 && nr < CONFIG.rows) {
+            let colsInRow = (nr % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+            if (nc >= 0 && nc < colsInRow) {
+                neighbors.push({r: nr, c: nc});
             }
         }
     }
     return neighbors;
 }
 
-// 盤面の初期化
-function initGame() {
-    score = 0;
-    updateScoreUI();
-    grid = [];
-    particles = [];
-    for (let r = 0; r < CONFIG.MAX_ROWS; r++) {
-        let maxCols = (r % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-        grid[r] = new Array(maxCols).fill(-1);
-        if (r < CONFIG.ROWS) {
-            for (let c = 0; c < maxCols; c++) {
-                grid[r][c] = getRandomBubbleType();
-            }
-        }
-    }
-    loadNextBubble();
-}
-
-// 次のバブルをセット
-function loadNextBubble() {
-    currentBubble = {
-        x: shooterPos.x, y: shooterPos.y,
-        vx: 0, vy: 0,
-        type: nextBubbleType !== undefined ? nextBubbleType : getRandomBubbleType()
-    };
-    nextBubbleType = getRandomBubbleType();
-    isFiring = false;
-}
-
-// 発射処理
-function fireBubble() {
-    if (isFiring || !isAiming) return;
-    isFiring = true;
-    isAiming = false;
-    currentBubble.vx = Math.cos(aimAngle) * CONFIG.BUBBLE_SPEED;
-    currentBubble.vy = Math.sin(aimAngle) * CONFIG.BUBBLE_SPEED;
-}
-
-// バブルの衝突判定と吸着処理
-function updateProjectile() {
-    if (!isFiring || !currentBubble) return;
-
-    currentBubble.x += currentBubble.vx;
-    currentBubble.y += currentBubble.vy;
-
-    // 左右の壁で反射
-    if (currentBubble.x - CONFIG.BUBBLE_RADIUS <= 0 || currentBubble.x + CONFIG.BUBBLE_RADIUS >= CONFIG.CANVAS_WIDTH) {
-        currentBubble.vx *= -1;
-        currentBubble.x = currentBubble.x < CONFIG.BUBBLE_RADIUS ? CONFIG.BUBBLE_RADIUS : CONFIG.CANVAS_WIDTH - CONFIG.BUBBLE_RADIUS;
-    }
-
-    // 衝突判定（天井または他のバブル）
-    let hit = false;
-    if (currentBubble.y - CONFIG.BUBBLE_RADIUS <= 0) hit = true; // 天井
-
-    for (let r = 0; r < CONFIG.MAX_ROWS; r++) {
-        let maxCols = (r % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-        for (let c = 0; c < maxCols; c++) {
-            if (grid[r][c] !== -1) {
-                let pos = getXYFromGrid(r, c);
-                let dx = currentBubble.x - pos.x;
-                let dy = currentBubble.y - pos.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < CONFIG.BUBBLE_RADIUS * 2) {
-                    hit = true; break;
-                }
-            }
-        }
-        if (hit) break;
-    }
-
-    if (hit) snapBubble();
-}
-
-// バブルを盤面に固定し、消去判定を行う
-function snapBubble() {
-    let gridPos = getGridFromXY(currentBubble.x, currentBubble.y);
-    
-    // 配置場所が範囲外、または既に埋まっている場合は微調整
-    if (gridPos.r >= CONFIG.MAX_ROWS) gridPos.r = CONFIG.MAX_ROWS - 1;
-    while(grid[gridPos.r] && grid[gridPos.r][gridPos.c] !== -1) {
-        gridPos.r++;
-        if(gridPos.r >= CONFIG.MAX_ROWS) { gameOver(); return; }
-    }
-
-    // 固定
-    grid[gridPos.r][gridPos.c] = currentBubble.type;
-    
-    // 消去判定
-    let matched = findMatches(gridPos.r, gridPos.c, currentBubble.type);
-    if (matched.length >= 3) {
-        matched.forEach(p => {
-            grid[p.r][p.c] = -1;
-            createParticles(p.r, p.c, currentBubble.type);
-        });
-        score += matched.length * CONFIG.SCORE_POP;
-        
-        // 宙に浮いたバブルを落とす
-        let dropped = removeFloatingBubbles();
-        score += dropped * CONFIG.SCORE_DROP;
-        
-        updateScoreUI();
-
-        // クリア判定
-        if (isBoardEmpty()) { gameClear(); return; }
-    }
-
-    // デッドライン到達判定
-    for (let c = 0; c < grid[CONFIG.MAX_ROWS - 1].length; c++) {
-        if (grid[CONFIG.MAX_ROWS - 1][c] !== -1) { gameOver(); return; }
-    }
-
-    loadNextBubble();
-}
-
-// マッチング判定（幅優先探索）
-function findMatches(startR, startC, type) {
-    let queue = [{ r: startR, c: startC }];
-    let visited = new Set([`${startR},${startC}`]);
-    let matches = [];
-
-    while (queue.length > 0) {
-        let current = queue.shift();
-        matches.push(current);
-
-        let neighbors = getNeighbors(current.r, current.c);
-        for (let n of neighbors) {
-            let key = `${n.r},${n.c}`;
-            if (!visited.has(key) && grid[n.r][n.c] === type) {
-                visited.add(key);
-                queue.push(n);
-            }
-        }
-    }
-    return matches;
-}
-
-// 宙に浮いたバブルの落下処理
-function removeFloatingBubbles() {
+function checkMatches(startR, startC, color) {
+    let matchGroup = [];
     let visited = new Set();
-    let queue = [];
-    let dropCount = 0;
+    let queue = [{r: startR, c: startC}];
+    visited.add(`${startR},${startC}`);
 
-    // 天井（行0）につながっているものをすべて探索
-    for (let c = 0; c < grid[0].length; c++) {
-        if (grid[0][c] !== -1) {
-            queue.push({ r: 0, c: c });
-            visited.add(`0,${c}`);
-        }
-    }
-
+    // 幅優先探索(BFS)で同色の繋がりを見つける
     while (queue.length > 0) {
-        let current = queue.shift();
-        let neighbors = getNeighbors(current.r, current.c);
+        let curr = queue.shift();
+        matchGroup.push(curr);
+
+        let neighbors = getNeighbors(curr.r, curr.c);
         for (let n of neighbors) {
-            let key = `${n.r},${n.c}`;
-            if (!visited.has(key) && grid[n.r][n.c] !== -1) {
-                visited.add(key);
+            if (grid[n.r][n.c] === color && !visited.has(`${n.r},${n.c}`)) {
+                visited.add(`${n.r},${n.c}`);
                 queue.push(n);
             }
         }
     }
 
-    // 天井から繋がっていないものを消去（落下）
-    for (let r = 0; r < CONFIG.MAX_ROWS; r++) {
-        let maxCols = (r % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-        for (let c = 0; c < maxCols; c++) {
-            if (grid[r][c] !== -1 && !visited.has(`${r},${c}`)) {
-                createParticles(r, c, grid[r][c]); // 落下エフェクト代わり
-                grid[r][c] = -1;
-                dropCount++;
+    // 3つ以上繋がっていたら消去
+    if (matchGroup.length >= 3) {
+        for (let b of matchGroup) {
+            grid[b.r][b.c] = null;
+        }
+        addScore(matchGroup.length * 10);
+        dropFloatingBubbles();
+    }
+}
+
+function dropFloatingBubbles() {
+    let connected = new Set();
+    let queue = [];
+
+    // 天井(r=0)に接しているバブルをキューに追加
+    for (let c = 0; c < CONFIG.cols; c++) {
+        if (grid[0] && grid[0][c] !== null) {
+            connected.add(`0,${c}`);
+            queue.push({r: 0, c: c});
+        }
+    }
+
+    // BFSで天井から繋がっているすべてのバブルをマーク
+    while (queue.length > 0) {
+        let curr = queue.shift();
+        let neighbors = getNeighbors(curr.r, curr.c);
+        for (let n of neighbors) {
+            if (grid[n.r][n.c] !== null && !connected.has(`${n.r},${n.c}`)) {
+                connected.add(`${n.r},${n.c}`);
+                queue.push(n);
             }
         }
     }
-    return dropCount;
+
+    // マークされていない（浮いている）バブルを消去
+    let droppedCount = 0;
+    for (let r = 0; r < CONFIG.rows; r++) {
+        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            if (grid[r] && grid[r][c] !== null && !connected.has(`${r},${c}`)) {
+                grid[r][c] = null;
+                droppedCount++;
+            }
+        }
+    }
+    
+    if (droppedCount > 0) {
+        addScore(droppedCount * 20); // 落下させた場合はボーナス
+    }
 }
 
-function isBoardEmpty() {
-    return grid.every(row => row.every(cell => cell === -1));
-}
+function checkWinLose() {
+    // 勝利判定: 盤面にバブルがない
+    let hasBubble = false;
+    for (let r = 0; r < CONFIG.rows; r++) {
+        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            if (grid[r] && grid[r][c] !== null) hasBubble = true;
+        }
+    }
 
-function createParticles(r, c, typeId) {
-    const pos = getXYFromGrid(r, c);
-    const color = CONFIG.BUBBLE_TYPES.find(t=>t.id === typeId).color;
-    for(let i=0; i<5; i++){
-        particles.push({
-            x: pos.x, y: pos.y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10,
-            life: 1.0, color: color
-        });
+    if (!hasBubble) {
+        endGame('CLEAR!');
+        return;
+    }
+
+    // 敗北判定: 最下段(画面外に近い行)にバブルが存在する
+    let bottomRowIndex = CONFIG.rows - 1;
+    let colsInRow = (bottomRowIndex % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+    for (let c = 0; c < colsInRow; c++) {
+        if (grid[bottomRowIndex] && grid[bottomRowIndex][c] !== null) {
+            endGame('GAME OVER');
+            return;
+        }
     }
 }
 
 /**
- * =========================================================
- * 描画・メインループ
- * =========================================================
+ * ==========================================
+ * 描画関連 (画像フォールバック対応)
+ * ==========================================
  */
-function draw() {
-    // 背景クリア
+function drawBubble(x, y, colorIndex) {
+    const img = loadedImages[colorIndex];
+    const r = CONFIG.radius;
+
+    if (img && img.complete && img.naturalWidth > 0) {
+        // 画像が存在し読み込まれている場合：アスペクト比を維持して描画領域に収める
+        ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+    } else {
+        // フォールバック処理：CSSライクなCanvas図形で代用
+        ctx.beginPath();
+        ctx.arc(x, y, r - 1, 0, Math.PI * 2);
+        ctx.fillStyle = CONFIG.colors[colorIndex];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // ハイライト（立体感）
+        ctx.beginPath();
+        ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fill();
+    }
+}
+
+function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (currentState !== STATE.PLAYING) return;
-
-    // デッドラインの描画 (初期配置行の下に移動)
-    ctx.beginPath();
-    let deadY = (CONFIG.ROWS) * CONFIG.ROW_HEIGHT + CONFIG.BUBBLE_RADIUS;
-    ctx.moveTo(0, deadY);
-    ctx.lineTo(CONFIG.CANVAS_WIDTH, deadY);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"; // 白っぽく変更
-    ctx.lineWidth = 3;
-    ctx.setLineDash([10, 10]);
-    ctx.stroke();
-    ctx.setLineDash([]); // 元に戻す
-
-    // 盤面のバブル描画（初期配置行まで）
-    for (let r = 0; r < CONFIG.ROWS; r++) {
-        let maxCols = (r % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-        for (let c = 0; c < maxCols; c++) {
-            if (grid[r][c] !== -1) {
-                let pos = getXYFromGrid(r, c);
-                Assets.drawBubble(ctx, pos.x, pos.y, CONFIG.BUBBLE_RADIUS, grid[r][c]);
-            }
-        }
-    }
-    
-    // 発射されたバブルが初期配置より下に張り付いた場合の描画
-    for (let r = CONFIG.ROWS; r < CONFIG.MAX_ROWS; r++) {
-        let maxCols = (r % 2 === 1) ? CONFIG.COLS - 1 : CONFIG.COLS;
-        for (let c = 0; c < maxCols; c++) {
-            if (grid[r][c] !== -1) {
-                let pos = getXYFromGrid(r, c);
-                Assets.drawBubble(ctx, pos.x, pos.y, CONFIG.BUBBLE_RADIUS, grid[r][c]);
+    // グリッド上の固定バブルを描画
+    for (let r = 0; r < CONFIG.rows; r++) {
+        let colsInRow = (r % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
+        for (let c = 0; c < colsInRow; c++) {
+            if (grid[r] && grid[r][c] !== null) {
+                let pos = getGridPos(r, c);
+                drawBubble(pos.x, pos.y, grid[r][c]);
             }
         }
     }
 
-    // エイムライン（照準）の描画
-    if (isAiming && !isFiring) {
-        ctx.beginPath();
-        ctx.moveTo(shooterPos.x, shooterPos.y);
-        ctx.lineTo(shooterPos.x + Math.cos(aimAngle) * 1000, shooterPos.y + Math.sin(aimAngle) * 1000);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    // 飛翔中のバブルを描画
+    if (flyingBubble) {
+        drawBubble(flyingBubble.x, flyingBubble.y, flyingBubble.color);
     }
 
-    // 発射バブルの描画
-    if (currentBubble) {
-        Assets.drawBubble(ctx, currentBubble.x, currentBubble.y, CONFIG.BUBBLE_RADIUS, currentBubble.type);
-    }
-    
-    // ネクストバブルの描画
-    Assets.drawBubble(ctx, shooterPos.x + 80, shooterPos.y + 20, CONFIG.BUBBLE_RADIUS * 0.6, nextBubbleType);
-    ctx.fillStyle = "#fff";
-    ctx.font = "16px sans-serif";
-    ctx.fillText("NEXT", shooterPos.x + 60, shooterPos.y - 10);
+    // 発射台と待機バブル、および照準線の描画
+    if (currentBubble && gameState === 'playing') {
+        // 照準線
+        if (isPressing) {
+            ctx.beginPath();
+            ctx.moveTo(currentBubble.x, currentBubble.y);
+            let dx = inputX - currentBubble.x;
+            let dy = inputY - currentBubble.y;
+            let angle = Math.atan2(dy, dx);
+            if (angle > -0.1) angle = -0.1;
+            if (angle < -Math.PI + 0.1) angle = -Math.PI + 0.1;
+            
+            ctx.lineTo(currentBubble.x + Math.cos(angle) * 100, currentBubble.y + Math.sin(angle) * 100);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
-    // 発射台（シューター）の装飾
-    ctx.beginPath();
-    ctx.arc(shooterPos.x, shooterPos.y, CONFIG.BUBBLE_RADIUS + 5, 0, Math.PI * 2);
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // パーティクルの更新と描画
-    for(let i = particles.length - 1; i >= 0; i--){
-        let p = particles[i];
-        p.x += p.vx; p.y += p.vy;
-        p.life -= 0.05;
-        if(p.life <= 0) { particles.splice(i, 1); continue; }
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1.0;
+        drawBubble(currentBubble.x, currentBubble.y, currentBubble.color);
     }
 }
 
 function gameLoop() {
-    if (currentState === STATE.PLAYING) {
-        updateProjectile();
+    if (gameState === 'playing') {
+        updatePhysics();
     }
-    draw();
+    drawGame();
     requestAnimationFrame(gameLoop);
 }
 
 /**
- * =========================================================
- * 入力処理（タッチ＆マウス統合）
- * =========================================================
+ * ==========================================
+ * UI・画面遷移・イベント制御
+ * ==========================================
  */
-function handleInputStart(x, y) {
-    if (currentState !== STATE.PLAYING || isFiring) return;
-    isAiming = true;
-    updateAim(x, y);
+const screens = {
+    title: document.getElementById('screen-title'),
+    result: document.getElementById('screen-result'),
+    hud: document.getElementById('hud')
+};
+
+function changeState(newState) {
+    gameState = newState;
+    screens.title.classList.add('hidden');
+    screens.result.classList.add('hidden');
+    screens.hud.classList.add('hidden');
+
+    if (newState === 'title') {
+        screens.title.classList.remove('hidden');
+        document.getElementById('title-highscore').innerText = highScore;
+    } else if (newState === 'playing') {
+        screens.hud.classList.remove('hidden');
+    } else if (newState === 'result') {
+        screens.result.classList.remove('hidden');
+    }
 }
 
-function handleInputMove(x, y) {
-    if (!isAiming) return;
-    updateAim(x, y);
+function addScore(points) {
+    score += points;
+    updateHUD();
 }
 
-function handleInputEnd() {
-    if (isAiming) fireBubble();
+function updateHUD() {
+    document.getElementById('hud-score').innerText = score;
+    document.getElementById('hud-highscore').innerText = Math.max(score, highScore);
 }
 
-function updateAim(clientX, clientY) {
-    // 画面上のキャンバスの実際の表示サイズと位置を取得
+function endGame(resultText) {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('bubbleHighScore', highScore);
+    }
+    
+    document.getElementById('result-title').innerText = resultText;
+    document.getElementById('result-score').innerText = score;
+    document.getElementById('result-highscore').innerText = highScore;
+    changeState('result');
+}
+
+// ボタンイベント
+document.getElementById('btn-start').addEventListener('click', () => {
+    initGame();
+    changeState('playing');
+});
+
+document.getElementById('btn-retry').addEventListener('click', () => {
+    initGame();
+    changeState('playing');
+});
+
+// 入力座標の取得（レスポンシブなCanvasのスケーリングを考慮）
+function updateInputPos(e) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    // キャンバス内の内部座標に変換
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
-    
-    // 角度計算（バブルが下に行かないように制限）
-    aimAngle = Math.atan2(y - shooterPos.y, x - shooterPos.x);
-    if (aimAngle > -0.1) aimAngle = -0.1; // 右下制限
-    if (aimAngle < -Math.PI + 0.1) aimAngle = -Math.PI + 0.1; // 左下制限
+    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    inputX = (clientX - rect.left) * scaleX;
+    inputY = (clientY - rect.top) * scaleY;
 }
 
-// イベントリスナーの登録（Pointer Eventでスマホ・PC両対応）
-canvas.addEventListener('pointerdown', (e) => { handleInputStart(e.clientX, e.clientY); });
-canvas.addEventListener('pointermove', (e) => { handleInputMove(e.clientX, e.clientY); });
-window.addEventListener('pointerup', () => { handleInputEnd(); });
+// マウス・タッチイベント設定 (passive: false で e.preventDefault() を許可)
+const eventOptions = { passive: false };
 
-// スマホ操作時の画面スクロールやピンチズーム等のデフォルト挙動を防止
-document.addEventListener('touchmove', (e) => {
-    if (e.target === canvas) e.preventDefault();
-}, { passive: false });
-
-/**
- * =========================================================
- * 画面遷移・UIコントロール
- * =========================================================
- */
-function updateScoreUI() {
-    hudScore.innerText = score;
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('bubbleShooterHighScore', highScore);
-        hudHighscore.innerText = highScore;
-    }
+function handleInputStart(e) {
+    if(e.type === 'touchstart') e.preventDefault();
+    if (gameState !== 'playing') return;
+    isPressing = true;
+    updateInputPos(e);
 }
 
-function startGame() {
-    uiTitle.classList.add('hidden');
-    uiResult.classList.add('hidden');
-    initGame();
-    currentState = STATE.PLAYING;
+function handleInputMove(e) {
+    if(e.type === 'touchmove') e.preventDefault(); // スマホのスクロールを防止
+    if (!isPressing) return;
+    updateInputPos(e);
 }
 
-function gameOver() {
-    currentState = STATE.RESULT;
-    document.getElementById('result-title').innerText = "Game Over";
-    document.getElementById('result-score').innerText = score;
-    document.getElementById('result-highscore').innerText = highScore;
-    uiResult.classList.remove('hidden');
+function handleInputEnd(e) {
+    if(e.type === 'touchend') e.preventDefault();
+    if (!isPressing) return;
+    isPressing = false;
+    fireBubble();
 }
 
-function gameClear() {
-    currentState = STATE.RESULT;
-    score += 1000; // クリアボーナス
-    updateScoreUI();
-    document.getElementById('result-title').innerText = "Clear!!";
-    document.getElementById('result-score').innerText = score;
-    document.getElementById('result-highscore').innerText = highScore;
-    uiResult.classList.remove('hidden');
-}
+window.addEventListener('mousedown', handleInputStart, eventOptions);
+window.addEventListener('mousemove', handleInputMove, eventOptions);
+window.addEventListener('mouseup', handleInputEnd, eventOptions);
 
-document.getElementById('btn-start').addEventListener('click', startGame);
-document.getElementById('btn-retry').addEventListener('click', startGame);
+window.addEventListener('touchstart', handleInputStart, eventOptions);
+window.addEventListener('touchmove', handleInputMove, eventOptions);
+window.addEventListener('touchend', handleInputEnd, eventOptions);
 
-// ループ開始
+// 起動処理
+preloadImages();
+document.getElementById('title-highscore').innerText = highScore;
+changeState('title');
 requestAnimationFrame(gameLoop);
 
 </script>
