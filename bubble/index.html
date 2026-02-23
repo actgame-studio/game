@@ -3,29 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kawaii Bubble Shooter</title>
+    <title>Pastel Bubble Shooter</title>
     <style>
-        /* === ゆめかわパステルデザイン === */
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #fce4ec;
+            background-color: #f8e1e7; /* 優しいピンク背景 */
             touch-action: none;
             display: flex; justify-content: center; align-items: center;
-            overflow: hidden; font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif;
             color: #5a4a42;
         }
         
-        #game-wrapper {
-            position: relative; width: 100%; max-width: 440px; height: 100%; max-height: 750px;
-            background-color: #ffffff; 
-            box-shadow: 0 15px 35px rgba(233, 30, 99, 0.2); 
-            border-radius: 20px; border: 4px solid #f8bbd0;
+        #app-container {
+            display: flex; flex-direction: column;
+            width: 100%; height: 100%;
+            max-width: 440px; max-height: 840px;
+            aspect-ratio: 440 / 840;
+            background: #ffffff;
+            border-radius: 15px; border: 4px solid #f48fb1;
+            box-shadow: 0 15px 35px rgba(233, 30, 99, 0.2);
             overflow: hidden;
         }
-        canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+        
+        #top-ui {
+            flex: 0 0 calc(100% * 90 / 840);
+            background: #fff0f5; /* UI部分はほんのり色付け */
+            border-bottom: 3px solid #f8bbd0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px;
+        }
+
+        .score-area {
+            font-weight: 900; font-size: 0.95rem; line-height: 1.3;
+        }
+
+        #btn-guide {
+            padding: 6px 12px; font-size: 0.9rem; font-weight: bold;
+            color: #5a4a42; background: #fff; border: 2px solid #f8bbd0; border-radius: 20px;
+            cursor: pointer; outline: none; transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #btn-guide.active { background: #ffb3ba; color: white; border-color: #ff80ab; }
+
+        #turn-indicator {
+            background: #f1f8e9; border: 2px solid #c5e1a5; padding: 4px 8px; 
+            border-radius: 15px; font-size: 0.85rem; text-align: right; line-height: 1.2;
+            transition: all 0.3s; font-weight: bold;
+        }
+        #turn-indicator.danger {
+            background: #ffebee; border-color: #ef9a9a; color: #c62828;
+            animation: pulse 1s infinite;
+        }
+        
+        #game-wrapper {
+            flex: 0 0 calc(100% * 750 / 840);
+            position: relative; width: 100%;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
         
         .ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -34,6 +71,7 @@
             backdrop-filter: blur(3px);
         }
         .hidden { display: none !important; }
+        
         h1 { 
             margin: 0 0 10px 0; font-size: 2.8rem; text-align: center; 
             background: -webkit-linear-gradient(#ff80ab, #f48fb1); 
@@ -49,66 +87,46 @@
             cursor: pointer; box-shadow: 0 6px 0 #f48fb1; transition: transform 0.1s, box-shadow 0.1s;
         }
         .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #f48fb1; }
-        
-        #hud {
-            position: absolute; top: 15px; left: 15px; right: 15px;
-            display: flex; justify-content: space-between; align-items: flex-start;
-            font-weight: 900; font-size: 1.1rem; z-index: 5; pointer-events: none;
+
+        @media (max-aspect-ratio: 440/840) {
+            #app-container { width: 100vw; height: auto; border-radius: 0; border: none; }
         }
-        
-        #turn-indicator {
-            background: #f1f8e9; border: 2px solid #c5e1a5; padding: 5px 12px; 
-            border-radius: 20px; font-size: 0.95rem; text-align: right;
-            transition: all 0.3s;
-        }
-        #turn-indicator.danger {
-            background: #ffebee; border-color: #ef9a9a; color: #c62828;
-            animation: pulse 1s infinite;
-        }
-        
-        #btn-guide {
-            position: absolute; top: 75px; left: 15px; padding: 8px 15px; font-size: 0.9rem; font-weight: bold;
-            color: #5a4a42; background: #fff; border: 2px solid #e0e0e0; border-radius: 20px;
-            cursor: pointer; z-index: 20; pointer-events: auto; outline: none; transition: background 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        #btn-guide.active { background: #81d4fa; border-color: #4fc3f7; color: white; }
     </style>
 </head>
 <body>
 
-<div id="game-wrapper">
-    <canvas id="gameCanvas" width="440" height="750"></canvas>
-    <button id="btn-guide" class="hidden">GUIDE: OFF</button>
-
-    <div id="hud" class="hidden">
-        <div style="text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;">
+<div id="app-container">
+    <div id="top-ui">
+        <div class="score-area">
             SCORE: <span id="hud-score">0</span><br>
             HIGH: <span id="hud-highscore">0</span>
         </div>
-        <div>
-            <div id="turn-indicator">
-                天井まで<br><span id="turn-dots">🔵🔵🔵🔵</span>
-            </div>
+        <button id="btn-guide">GUIDE: OFF</button>
+        <div id="turn-indicator">
+            天井まで<br><span id="turn-dots">🔵🔵🔵🔵</span>
         </div>
     </div>
 
-    <div id="screen-title" class="ui-layer">
-        <h1>KAWAII<br>BUBBLE</h1>
-        <p>High Score: <span id="title-highscore">0</span></p>
-        <p style="font-size: 0.95rem; color:#888; margin-top:20px; text-align:center; line-height:1.6;">
-            画面下部タップでバブル入れ替え<br>
-            <span style="color:#ff80ab;">4個以上同時消し</span>で特殊バブル生成！<br>
-            限界まで生き残れ！
-        </p>
-        <button class="btn" id="btn-start">GAME START</button>
-    </div>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="440" height="750"></canvas>
 
-    <div id="screen-result" class="ui-layer hidden">
-        <h2 id="result-title">GAME OVER</h2>
-        <p>Score: <span id="result-score">0</span></p>
-        <p>High Score: <span id="result-highscore">0</span></p>
-        <button class="btn" id="btn-retry">RETRY</button>
+        <div id="screen-title" class="ui-layer">
+            <h1>PASTEL<br>BUBBLE</h1>
+            <p>High Score: <span id="title-highscore">0</span></p>
+            <p style="font-size: 0.95rem; color:#888; margin-top:20px; text-align:center; line-height:1.6;">
+                画面下部タップでバブル入れ替え<br>
+                <span style="color:#ff80ab;">4個以上同時消し</span>で特殊バブル生成！<br>
+                限界まで生き残れ！
+            </p>
+            <button class="btn" id="btn-start">GAME START</button>
+        </div>
+
+        <div id="screen-result" class="ui-layer hidden">
+            <h2 id="result-title">GAME OVER</h2>
+            <p>Score: <span id="result-score">0</span></p>
+            <p>High Score: <span id="result-highscore">0</span></p>
+            <button class="btn" id="btn-retry">RETRY</button>
+        </div>
     </div>
 </div>
 
@@ -117,9 +135,9 @@
 const CONFIG = {
     width: 440, height: 750, radius: 20, speed: 20,
     cols: 11, rows: 20, startRows: 8,
-    // パステルカラー: いちごミルク、ソーダ、メロン、レモン、グレープ
-    colors: ['#ffb3ba', '#bae1ff', '#baffc9', '#ffffba', '#e2cbfa'],
-    turnsToDrop: 4 // 4回ミスで天井が下がる
+    // 視認性を高めたマカロンカラーに変更
+    colors: ['#ff85a2', '#6bc1ff', '#69e294', '#fce258', '#b882f8'],
+    turnsToDrop: 4
 };
 
 const canvas = document.getElementById('gameCanvas');
@@ -162,8 +180,8 @@ function initGame() {
         for (let c = 0; c < colsInRow; c++) {
             if (r < CONFIG.startRows) {
                 let rand = Math.random();
-                if (rand < 0.05) grid[r][c] = 5; // 石
-                else if (rand < 0.08) grid[r][c] = 6; // ボム
+                if (rand < 0.05) grid[r][c] = 5; 
+                else if (rand < 0.08) grid[r][c] = 6; 
                 else grid[r][c] = Math.floor(Math.random() * CONFIG.colors.length);
             } else grid[r][c] = null;
         }
@@ -311,9 +329,9 @@ function checkMatches(startR, startC, type) {
         playTone(400 + Math.min(combo * 50, 600), 'sine', 0.15);
 
         let specialCreated = null;
-        if (matchGroup.length === 4) specialCreated = 6; // Bomb
-        else if (matchGroup.length === 5) specialCreated = 8; // Thunder
-        else if (matchGroup.length >= 6) specialCreated = 9; // ColorBomb
+        if (matchGroup.length === 4) specialCreated = 6; 
+        else if (matchGroup.length === 5) specialCreated = 8; 
+        else if (matchGroup.length >= 6) specialCreated = 9; 
 
         for (let b of matchGroup) {
             if (specialCreated && b.r === startR && b.c === startC) {
@@ -476,7 +494,11 @@ function checkTurnDrop(matchMade) {
         let newRow = []; let colsInRow = (gridOffset % 2 === 0) ? CONFIG.cols : CONFIG.cols - 1;
         for(let c=0; c<colsInRow; c++) { let rand = Math.random(); if (rand < 0.05) newRow[c] = 5; else newRow[c] = Math.floor(Math.random() * 5); }
         grid.unshift(newRow); grid.pop(); 
-        shakeTime = 15; playTone(100, 'sawtooth', 0.5, 0.3);
+        shakeTime = 10; 
+        
+        // 🌟 天井降下音を「可愛い泡の音」に変更 🌟
+        playTone(400, 'sine', 0.1, 0.2); 
+        setTimeout(() => playTone(500, 'sine', 0.15, 0.2), 100);
     }
     updateHUD(); updateTurnUI();
 }
@@ -504,10 +526,10 @@ function checkWinLose() {
 
 function getColor(type) {
     if (type < 5) return CONFIG.colors[type];
-    if (type === 5) return '#b0bec5'; // 石: 青みグレー
-    if (type === 6) return '#f48fb1'; // ボム: ピンク
-    if (type === 8) return '#ffeaa7'; // 雷: イエロー
-    if (type === 9) return '#e1bee7'; // カラー: パープル
+    if (type === 5) return '#b0bec5'; 
+    if (type === 6) return '#f48fb1'; 
+    if (type === 8) return '#ffeaa7'; 
+    if (type === 9) return '#e1bee7'; 
     return '#fff';
 }
 
@@ -516,52 +538,27 @@ function createParticles(x, y, color) {
 }
 function spawnText(x, y, text, color, maxLife = 40, size = 20) { floatTexts.push({x, y, text, color, life: maxLife, maxLife, size}); }
 
-// === 💖 新しい「お顔＆マシュマロ質感」描画関数 💖 ===
-function drawKawaiiFace(ctx, x, y, radius) {
-    ctx.fillStyle = '#5a4a42'; // 優しい茶色の目と口
-    const eyeOffsetX = radius * 0.3; const eyeOffsetY = radius * 0.1;
-    const eyeSizeW = radius * 0.15; const eyeSizeH = radius * 0.2;
-    ctx.beginPath();
-    ctx.ellipse(x - eyeOffsetX, y - eyeOffsetY, eyeSizeW, eyeSizeH, 0, 0, Math.PI * 2);
-    ctx.ellipse(x + eyeOffsetX, y - eyeOffsetY, eyeSizeW, eyeSizeH, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff'; // 目のハイライト
-    ctx.beginPath();
-    ctx.arc(x - eyeOffsetX + eyeSizeW*0.3, y - eyeOffsetY - eyeSizeH*0.3, eyeSizeW*0.4, 0, Math.PI*2);
-    ctx.arc(x + eyeOffsetX + eyeSizeW*0.3, y - eyeOffsetY - eyeSizeH*0.3, eyeSizeW*0.4, 0, Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle = '#5a4a42'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(x, y, radius * 0.3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); // 口
-}
-
+// === マシュマロ質感の立体描画 ===
 function drawBubbleEx(x, y, type, radius) {
-    // 1. ベースの形と色（少し小さめに描いて太い線を内側に収める）
     ctx.beginPath(); ctx.arc(x, y, radius - 2, 0, Math.PI * 2);
     let baseColor = getColor(type);
     ctx.fillStyle = baseColor; ctx.fill();
 
-    // 2. マシュマロ風の柔らかいグラデーション（通常色と特殊アイテムのみ）
     if (type < 5 || type >= 6) {
         let grad = ctx.createRadialGradient(x, y, radius * 0.5, x, y, radius);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');   // 内側の柔らかな光
-        grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.4)'); // フチのハイライト
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.05)');        // ほんのり影
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');   
+        grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.5)'); 
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.05)');        
         ctx.fillStyle = grad; ctx.fill();
-        // ツヤ感の追加
+        
         ctx.beginPath();
         ctx.ellipse(x - radius * 0.3, y - radius * 0.3, radius * 0.2, radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fill();
     }
 
-    // 3. 太くて柔らかいアウトライン
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
 
-    // 4. 中身（お顔 または アイコン）
-    if (type < 5) {
-        // 通常色には「お顔」を描画！
-        drawKawaiiFace(ctx, x, y, radius);
-    } else if (type === 5) {
-        // 石（シンプルに）
+    if (type === 5) {
         ctx.fillStyle = '#b0bec5'; ctx.fillRect(x-radius*0.5, y-radius*0.5, radius, radius);
         ctx.strokeStyle = '#78909c'; ctx.lineWidth = 2; ctx.strokeRect(x-radius*0.5, y-radius*0.5, radius, radius);
     } else if (type === 6) {
@@ -574,7 +571,8 @@ function drawBubbleEx(x, y, type, radius) {
 }
 
 function drawGame() {
-    ctx.fillStyle = '#fdfbfb'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 🌟 描画領域の背景を少し色味のあるピンクグレーにしてコントラスト確保 🌟
+    ctx.fillStyle = '#fbf0f4'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTime--; }
@@ -691,15 +689,19 @@ function gameLoop() {
     drawGame(); requestAnimationFrame(gameLoop);
 }
 
-const screens = { title: document.getElementById('screen-title'), result: document.getElementById('screen-result'), hud: document.getElementById('hud') };
+const screens = { title: document.getElementById('screen-title'), result: document.getElementById('screen-result') };
 const btnGuide = document.getElementById('btn-guide');
 
 function changeState(newState) {
     gameState = newState;
-    screens.title.classList.add('hidden'); screens.result.classList.add('hidden'); screens.hud.classList.add('hidden'); btnGuide.classList.add('hidden');
-    if (newState === 'title') { screens.title.classList.remove('hidden'); document.getElementById('title-highscore').innerText = highScore; }
-    else if (newState === 'playing') { screens.hud.classList.remove('hidden'); btnGuide.classList.remove('hidden'); }
-    else if (newState === 'result') screens.result.classList.remove('hidden');
+    screens.title.classList.add('hidden'); screens.result.classList.add('hidden');
+    if (newState === 'title') { 
+        screens.title.classList.remove('hidden'); 
+        document.getElementById('title-highscore').innerText = highScore; 
+    }
+    else if (newState === 'result') {
+        screens.result.classList.remove('hidden');
+    }
 }
 
 function addScore(points) { score += points; updateHUD(); }
@@ -723,7 +725,9 @@ btnGuide.addEventListener('click', (e) => {
 });
 
 function updateInputPos(e) {
-    const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height;
+    const rect = canvas.getBoundingClientRect(); 
+    const scaleX = canvas.width / rect.width; 
+    const scaleY = canvas.height / rect.height;
     inputX = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
     inputY = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
 }
