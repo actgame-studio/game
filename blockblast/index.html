@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Blast Clone (Combo Friendly Update)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+        }
+        
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000; color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; touch-action: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #game-container {
+            position: relative; width: 100%; height: 100%;
+            max-width: 500px; aspect-ratio: 9 / 16;
+            background-color: var(--bg-color);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+            transform-origin: center;
+        }
+
+        /* 画面シェイク：最後は確実に元の位置(0,0)に戻るように修正 */
+        @keyframes shake {
+            0%   { transform: translate(0px, 0px) rotate(0deg); }
+            10%  { transform: translate(-2px, -3px) rotate(-1deg); }
+            20%  { transform: translate(-4px, 0px) rotate(1deg); }
+            30%  { transform: translate(4px, 3px) rotate(0deg); }
+            40%  { transform: translate(2px, -2px) rotate(1deg); }
+            50%  { transform: translate(-2px, 3px) rotate(-1deg); }
+            60%  { transform: translate(-4px, 2px) rotate(0deg); }
+            70%  { transform: translate(4px, 2px) rotate(-1deg); }
+            80%  { transform: translate(-2px, -2px) rotate(1deg); }
+            90%  { transform: translate(2px, 3px) rotate(0deg); }
+            100% { transform: translate(0px, 0px) rotate(0deg); } 
+        }
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-hard { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            background-color: rgba(15, 23, 42, 0.9); z-index: 10;
+        }
+        .screen.active { display: flex; }
+        #play-screen { background-color: transparent; z-index: 1; }
+
+        h1 { font-size: 3rem; margin-bottom: 0.5rem; color: #38bdf8; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); text-align: center; }
+        .score-text { font-size: 1.5rem; margin-bottom: 2rem; color: #94a3b8; }
+        
+        button {
+            padding: 1rem 3rem; font-size: 1.5rem; font-weight: bold; color: white;
+            background-color: var(--primary-color); border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:active { transform: scale(0.95); }
+
+        canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="title-screen" class="screen active">
+        <h1>BLOCK<br>BLAST</h1>
+        <div class="score-text" id="title-highscore">HIGH SCORE: 0</div>
+        <button onclick="startGame()">PLAY</button>
+    </div>
+    <div id="play-screen" class="screen">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    <div id="result-screen" class="screen">
+        <h1 style="color: #ef4444;">GAME OVER</h1>
+        <div class="score-text" id="result-score">SCORE: 0</div>
+        <div class="score-text" id="result-highscore">HIGH SCORE: 0</div>
+        <button onclick="startGame()">TRY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    const CONFIG = {
+        canvas: { width: 480, height: 850 },
+        board: { cols: 8, rows: 8, x: 40, y: 120, cellSize: 50 },
+        slot: { y: 680, cellSize: 28 }, 
+        colors: {
+            bg: '#0f172a', boardBg: '#1e293b', grid: '#334155', text: '#f8fafc',
+            blocks: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6']
+        },
+        score: { baseLine: 10, comboBonus: 5 }
+    };
+
+    const SHAPES = [
+        { matrix: [[1]], colorIdx: 0 }, { matrix: [[1,1]], colorIdx: 1 }, { matrix: [[1],[1]], colorIdx: 1 },
+        { matrix: [[1,1,1]], colorIdx: 2 }, { matrix: [[1],[1],[1]], colorIdx: 2 }, { matrix: [[1,1,1,1]], colorIdx: 3 },
+        { matrix: [[1],[1],[1],[1]], colorIdx: 3 }, { matrix: [[1,1,1,1,1]], colorIdx: 4 }, { matrix: [[1],[1],[1],[1],[1]], colorIdx: 4 },
+        { matrix: [[1,1],[1,1]], colorIdx: 5 }, { matrix: [[1,1,1],[1,1,1],[1,1,1]], colorIdx: 0 },
+        { matrix: [[1,1],[1,0]], colorIdx: 1 }, { matrix: [[1,1],[0,1]], colorIdx: 1 }, { matrix: [[1,0],[1,1]], colorIdx: 1 },
+        { matrix: [[0,1],[1,1]], colorIdx: 1 }, { matrix: [[1,1,1],[1,0,0],[1,0,0]], colorIdx: 2 }, { matrix: [[1,1,1],[0,0,1],[0,0,1]], colorIdx: 2 },
+        { matrix: [[1,0,0],[1,0,0],[1,1,1]], colorIdx: 2 }, { matrix: [[0,0,1],[0,0,1],[1,1,1]], colorIdx: 2 }
+    ];
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = CONFIG.canvas.width;
+    canvas.height = CONFIG.canvas.height;
+
+    let state = 'title'; 
+    let board = [];
+    let slots = [null, null, null];
+    let dragging = null;
+    let score = 0, combo = 0, flashAlpha = 0;
+    
+    let particles = [];
+    let floatingTexts = [];
+
+    let highScore = parseInt(localStorage.getItem('blockBlastHighScore') || '0', 10);
+    document.getElementById('title-highscore').innerText = `HIGH SCORE: ${highScore}`;
+
+    /* === エフェクト関連 === */
+    function spawnParticles(x, y, color) {
+        for (let i = 0; i < 8; i++) {
+            particles.push({
+                x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
+                life: 1.0, color: color, size: Math.random() * 6 + 4
+            });
+        }
+    }
+
+    function spawnFloatingText(text, x, y, color, size) {
+        floatingTexts.push({ text: text, x: x, y: y, vy: -2, life: 1.5, color: color, size: size });
+    }
+
+    function triggerShake(intensity) {
+        const container = document.getElementById('game-container');
+        container.classList.remove('shake', 'shake-hard');
+        void container.offsetWidth; // リフローを強制
+        
+        if (intensity >= 3) {
+            container.classList.add('shake-hard');
+        } else {
+            container.classList.add('shake');
+        }
+
+        // アニメーション完了後にクラスを確実に除去してフリーズを防止
+        setTimeout(() => {
+            container.classList.remove('shake', 'shake-hard');
+        }, 500);
+    }
+
+    function triggerVibration(intensity) {
+        if (!navigator.vibrate) return;
+        if (intensity >= 3) navigator.vibrate([100, 50, 100, 50, 100]);
+        else if (intensity >= 2) navigator.vibrate([50, 50, 50]);
+        else navigator.vibrate(50);
+    }
+
+    /* === ゲームロジック === */
+    function startGame() {
+        board = Array.from({ length: CONFIG.board.rows }, () => Array(CONFIG.board.cols).fill(0));
+        score = 0; combo = 0; dragging = null;
+        particles = []; floatingTexts = [];
+        fillSlots();
+        
+        switchScreen('play-screen');
+        state = 'play';
+        requestAnimationFrame(gameLoop);
+    }
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    // 今の盤面に置けるかどうかの判定（ユーザー救済用）
+    function canPlaceShapeAnywhere(matrix) {
+        for (let r = 0; r <= CONFIG.board.rows - matrix.length; r++) {
+            for (let c = 0; c <= CONFIG.board.cols - matrix[0].length; c++) {
+                if (isValidPlacement(matrix, c, r)) return true;
+            }
+        }
+        return false;
+    }
+
+    // 置けるブロックのリストを取得
+    function getPlaceableShapes() {
+        let placeable = [];
+        for (let i = 0; i < SHAPES.length; i++) {
+            if (canPlaceShapeAnywhere(SHAPES[i].matrix)) {
+                placeable.push(SHAPES[i]);
+            }
+        }
+        return placeable;
+    }
+
+    // ユーザーに優しくスロットを補充する
+    function fillSlots() {
+        const placeableShapes = getPlaceableShapes();
+        let newSlots = [];
+
+        for (let i = 0; i < 3; i++) {
+            let shape;
+            // 3つのうち最低1つ(i===0)は、確実に盤面のどこかに置けるブロックにする（詰み防止）
+            if (i === 0 && placeableShapes.length > 0) {
+                shape = placeableShapes[Math.floor(Math.random() * placeableShapes.length)];
+            } else {
+                // 残りの2つはランダム
+                shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            }
+            newSlots.push({ shape: shape });
+        }
+
+        // 「確実に置けるブロック」が常に一番左だとバレてしまうので、配列をシャッフルする
+        newSlots.sort(() => Math.random() - 0.5);
+
+        // シャッフル後、画面上の正しい座標を割り当てる
+        for (let i = 0; i < 3; i++) {
+            const shape = newSlots[i].shape;
+            const shapeW = shape.matrix[0].length * CONFIG.slot.cellSize;
+            const shapeH = shape.matrix.length * CONFIG.slot.cellSize;
+            slots[i] = { 
+                shape: shape, 
+                x: CONFIG.canvas.width * (2 * i + 1) / 6 - shapeW / 2, 
+                y: CONFIG.slot.y - shapeH / 2 
+            };
+        }
+    }
+
+    function checkClear() {
+        let rowsToClear = [], colsToClear = [];
+
+        for (let r = 0; r < CONFIG.board.rows; r++) if (board[r].every(cell => cell > 0)) rowsToClear.push(r);
+        for (let c = 0; c < CONFIG.board.cols; c++) {
+            let full = true;
+            for (let r = 0; r < CONFIG.board.rows; r++) if (board[r][c] === 0) { full = false; break; }
+            if (full) colsToClear.push(c);
+        }
+
+        const linesCleared = rowsToClear.length + colsToClear.length;
+
+        if (linesCleared > 0) {
+            const intensity = linesCleared + (combo > 0 ? 1 : 0);
+            triggerShake(intensity);
+            triggerVibration(intensity);
+
+            rowsToClear.forEach(r => {
+                for(let c=0; c<CONFIG.board.cols; c++) {
+                    spawnParticles(CONFIG.board.x + c * CONFIG.board.cellSize + CONFIG.board.cellSize / 2, CONFIG.board.y + r * CONFIG.board.cellSize + CONFIG.board.cellSize / 2, '#fbbf24');
+                    board[r][c] = 0; 
+                }
+            });
+            colsToClear.forEach(c => {
+                for(let r=0; r<CONFIG.board.rows; r++) {
+                    spawnParticles(CONFIG.board.x + c * CONFIG.board.cellSize + CONFIG.board.cellSize / 2, CONFIG.board.y + r * CONFIG.board.cellSize + CONFIG.board.cellSize / 2, '#fbbf24');
+                    board[r][c] = 0; 
+                }
+            });
+
+            combo++;
+            let points = linesCleared * CONFIG.score.baseLine;
+            if (linesCleared > 1) {
+                points += (linesCleared - 1) * CONFIG.score.baseLine;
+                spawnFloatingText(`${linesCleared} LINES!`, CONFIG.canvas.width / 2, CONFIG.canvas.height / 2 + 50, '#38bdf8', 48);
+            }
+            if (combo > 1) {
+                points += (combo - 1) * CONFIG.score.comboBonus;
+                spawnFloatingText(`${combo} COMBO!`, CONFIG.canvas.width / 2, CONFIG.canvas.height / 2 - 50, '#fbbf24', 56);
+            }
+            
+            score += points;
+            flashAlpha = 0.5;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('blockBlastHighScore', highScore);
+            }
+        } else {
+            combo = 0;
+        }
+    }
+
+    function checkGameOver() {
+        for (let i = 0; i < 3; i++) {
+            if (slots[i]) {
+                if (canPlaceShapeAnywhere(slots[i].shape.matrix)) return false;
+            }
+        }
+        return true;
+    }
+
+    function isValidPlacement(matrix, startCol, startRow) {
+        for (let r = 0; r < matrix.length; r++) {
+            for (let c = 0; c < matrix[0].length; c++) {
+                if (matrix[r][c] === 1) {
+                    const br = startRow + r, bc = startCol + c;
+                    if (br < 0 || br >= CONFIG.board.rows || bc < 0 || bc >= CONFIG.board.cols || board[br][bc] > 0) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function endGame() {
+        state = 'result';
+        document.getElementById('result-score').innerText = `SCORE: ${score}`;
+        document.getElementById('result-highscore').innerText = `HIGH SCORE: ${highScore}`;
+        switchScreen('result-screen');
+    }
+
+    // イベントリスナー
+    document.addEventListener('touchmove', function(e) { if (e.target.tagName !== 'BUTTON') e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    function getPointerPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
+    }
+
+    function handleStart(e) {
+        if (state !== 'play') return;
+        const pos = getPointerPos(e);
+        
+        for (let i = 0; i < 3; i++) {
+            if (!slots[i]) continue;
+            const w = slots[i].shape.matrix[0].length * CONFIG.slot.cellSize;
+            const h = slots[i].shape.matrix.length * CONFIG.slot.cellSize;
+            const pad = 30;
+            if (pos.x >= slots[i].x - pad && pos.x <= slots[i].x + w + pad && pos.y >= slots[i].y - pad && pos.y <= slots[i].y + h + pad) {
+                const shapeW = slots[i].shape.matrix[0].length * CONFIG.board.cellSize;
+                const shapeH = slots[i].shape.matrix.length * CONFIG.board.cellSize;
+                dragging = { slotIndex: i, shape: slots[i].shape, offsetX: shapeW / 2, offsetY: shapeH + 40, x: pos.x - shapeW / 2, y: pos.y - (shapeH + 40) };
+                break;
+            }
+        }
+    }
+
+    function handleMove(e) {
+        if (!dragging || state !== 'play') return;
+        const pos = getPointerPos(e);
+        dragging.x = pos.x - dragging.offsetX; dragging.y = pos.y - dragging.offsetY;
+    }
+
+    function handleEnd(e) {
+        if (!dragging || state !== 'play') return;
+        const col = Math.round((dragging.x - CONFIG.board.x) / CONFIG.board.cellSize);
+        const row = Math.round((dragging.y - CONFIG.board.y) / CONFIG.board.cellSize);
+        
+        if (isValidPlacement(dragging.shape.matrix, col, row)) {
+            for (let r = 0; r < dragging.shape.matrix.length; r++) {
+                for (let c = 0; c < dragging.shape.matrix[0].length; c++) {
+                    if (dragging.shape.matrix[r][c] === 1) board[row + r][col + c] = dragging.shape.colorIdx + 1;
+                }
+            }
+            slots[dragging.slotIndex] = null;
+            checkClear();
+            if (slots.every(s => s === null)) fillSlots();
+            if (checkGameOver()) endGame();
+        }
+        dragging = null;
+    }
+
+    canvas.addEventListener('mousedown', handleStart); window.addEventListener('mousemove', handleMove); window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, { passive: false }); window.addEventListener('touchmove', handleMove, { passive: false }); window.addEventListener('touchend', handleEnd);
+
+    function drawBlockCell(ctx, x, y, size, colorIdx) {
+        ctx.fillStyle = CONFIG.colors.blocks[colorIdx % CONFIG.colors.blocks.length];
+        ctx.fillRect(x, y, size, size);
+        ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.beginPath(); ctx.moveTo(x, y + size); ctx.lineTo(x, y); ctx.lineTo(x + size, y); ctx.lineTo(x + size - 5, y + 5); ctx.lineTo(x + 5, y + 5); ctx.lineTo(x + 5, y + size - 5); ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.beginPath(); ctx.moveTo(x + size, y); ctx.lineTo(x + size, y + size); ctx.lineTo(x, y + size); ctx.lineTo(x + 5, y + size - 5); ctx.lineTo(x + size - 5, y + size - 5); ctx.lineTo(x + size - 5, y + 5); ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1; ctx.strokeRect(x, y, size, size);
+    }
+
+    function drawShape(ctx, shape, x, y, cellSize, isGhost = false) {
+        ctx.globalAlpha = isGhost ? 0.4 : 1.0;
+        for (let r = 0; r < shape.matrix.length; r++) {
+            for (let c = 0; c < shape.matrix[0].length; c++) {
+                if (shape.matrix[r][c] === 1) drawBlockCell(ctx, x + c * cellSize, y + r * cellSize, cellSize, shape.colorIdx);
+            }
+        }
+        ctx.globalAlpha = 1.0;
+    }
+
+    function gameLoop() {
+        if (state !== 'play') return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = CONFIG.colors.text; ctx.font = "bold 28px sans-serif";
+        ctx.textAlign = "left"; ctx.fillText(`SCORE: ${score}`, 40, 60);
+        ctx.textAlign = "right"; ctx.fillText(`HIGH: ${highScore}`, canvas.width - 40, 60);
+
+        ctx.fillStyle = CONFIG.colors.boardBg; ctx.fillRect(CONFIG.board.x, CONFIG.board.y, CONFIG.board.cols * CONFIG.board.cellSize, CONFIG.board.rows * CONFIG.board.cellSize);
+        ctx.strokeStyle = CONFIG.colors.grid; ctx.lineWidth = 2;
+        for(let r=0; r<=CONFIG.board.rows; r++) { ctx.beginPath(); ctx.moveTo(CONFIG.board.x, CONFIG.board.y + r * CONFIG.board.cellSize); ctx.lineTo(CONFIG.board.x + CONFIG.board.cols * CONFIG.board.cellSize, CONFIG.board.y + r * CONFIG.board.cellSize); ctx.stroke(); }
+        for(let c=0; c<=CONFIG.board.cols; c++) { ctx.beginPath(); ctx.moveTo(CONFIG.board.x + c * CONFIG.board.cellSize, CONFIG.board.y); ctx.lineTo(CONFIG.board.x + c * CONFIG.board.cellSize, CONFIG.board.y + CONFIG.board.rows * CONFIG.board.cellSize); ctx.stroke(); }
+
+        for(let r=0; r<CONFIG.board.rows; r++) {
+            for(let c=0; c<CONFIG.board.cols; c++) {
+                if(board[r][c] > 0) drawBlockCell(ctx, CONFIG.board.x + c * CONFIG.board.cellSize, CONFIG.board.y + r * CONFIG.board.cellSize, CONFIG.board.cellSize, board[r][c] - 1);
+            }
+        }
+
+        for(let i=0; i<3; i++) if(slots[i] && (!dragging || dragging.slotIndex !== i)) drawShape(ctx, slots[i].shape, slots[i].x, slots[i].y, CONFIG.slot.cellSize);
+
+        if(dragging) {
+            const col = Math.round((dragging.x - CONFIG.board.x) / CONFIG.board.cellSize), row = Math.round((dragging.y - CONFIG.board.y) / CONFIG.board.cellSize);
+            if (isValidPlacement(dragging.shape.matrix, col, row)) drawShape(ctx, dragging.shape, CONFIG.board.x + col * CONFIG.board.cellSize, CONFIG.board.y + row * CONFIG.board.cellSize, CONFIG.board.cellSize, true);
+            drawShape(ctx, dragging.shape, dragging.x, dragging.y, CONFIG.board.cellSize);
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+            if (p.life <= 0) { particles.splice(i, 1); }
+            else { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); }
+        }
+        ctx.globalAlpha = 1.0;
+
+        if (flashAlpha > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+            ctx.fillRect(CONFIG.board.x, CONFIG.board.y, CONFIG.board.cols * CONFIG.board.cellSize, CONFIG.board.rows * CONFIG.board.cellSize);
+            flashAlpha -= 0.05;
+        }
+
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            let ft = floatingTexts[i];
+            ft.y += ft.vy; ft.life -= 0.02;
+            if (ft.life <= 0) { floatingTexts.splice(i, 1); }
+            else {
+                ctx.globalAlpha = Math.min(ft.life, 1.0);
+                ctx.fillStyle = ft.color; ctx.font = `900 ${ft.size}px 'Arial Black', sans-serif`; ctx.textAlign = "center";
+                ctx.strokeStyle = "black"; ctx.lineWidth = 5; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y);
+            }
+        }
+        ctx.globalAlpha = 1.0;
+
+        requestAnimationFrame(gameLoop);
+    }
+</script>
+</body>
+</html>

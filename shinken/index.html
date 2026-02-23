@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Survival Memory - Time Attack Ver.4 -</title>
+    <style>
+        /* =========================================
+           基本スタイル・レスポンシブ設定
+        ========================================= */
+        :root {
+            --primary: #2980b9; --bg-color: #1a1a2e; --text-color: #f1f2f6;
+            --card-back: #e67e22; --card-front: #ffffff;
+            --danger: #e74c3c; --warning: #f1c40f; --success: #2ecc71;
+            --merit-bg: #d4edda; --merit-border: #28a745;
+            --demerit-bg: #f8d7da; --demerit-border: #dc3545;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden; touch-action: none;
+        }
+        #game-container {
+            position: relative; max-width: 600px; width: 100%; height: 100%;
+            margin: 0 auto; background: #16213e; display: flex; flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
+        }
+
+        /* 画面シェイクアニメーション */
+        @keyframes shake-s { 0%, 100% {transform:translateX(0)} 25% {transform:translateX(-3px)} 75% {transform:translateX(3px)} }
+        @keyframes shake-m { 0%, 100% {transform:translate(0,0)} 20% {transform:translate(-5px,2px)} 40% {transform:translate(5px,-3px)} 60% {transform:translate(-4px,1px)} 80% {transform:translate(4px,-2px)} }
+        @keyframes shake-l { 0%, 100% {transform:translate(0,0)} 15% {transform:translate(-8px,4px)} 30% {transform:translate(7px,-6px)} 45% {transform:translate(-6px,2px)} 60% {transform:translate(5px,-4px)} 75% {transform:translate(-3px,1px)} }
+        .shake-s { animation: shake-s 0.3s ease-in-out; }
+        .shake-m { animation: shake-m 0.4s ease-in-out; }
+        .shake-l { animation: shake-l 0.5s ease-in-out; }
+
+        /* 画面遷移用クラス */
+        .screen {
+            position: absolute; inset: 0; display: none; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+            box-sizing: border-box; text-align: center; z-index: 10;
+            background: rgba(22, 33, 62, 0.95);
+        }
+        .screen.active { display: flex; }
+        
+        #play-screen { padding: 0; background: transparent; pointer-events: auto; justify-content: space-between; }
+
+        /* UIコンポーネント */
+        h1 { font-size: 2rem; margin-bottom: 10px; color: var(--warning); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .btn {
+            padding: 15px 30px; font-size: 1.2rem; font-weight: bold; color: #fff;
+            background: var(--primary); border: none; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s, background 0.2s; margin-top: 20px;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        
+        /* プレイ画面ヘッダー (ステージとゲージ) */
+        #ui-header {
+            width: 100%; display: flex; align-items: center; padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.6); font-weight: bold; z-index: 5;
+            box-sizing: border-box; gap: 15px; border-bottom: 2px solid #0f1526;
+        }
+        #stage-indicator { font-size: 1.2rem; white-space: nowrap; }
+        
+        /* タイムゲージ */
+        #time-gauge-container {
+            flex: 1; height: 16px; background: #0f1526; border-radius: 8px;
+            overflow: hidden; border: 2px solid #333; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+        #time-gauge-bar {
+            height: 100%; width: 100%; background: var(--success);
+            border-radius: 6px; transition: width 0.1s linear, background-color 0.3s;
+        }
+        #time-gauge-bar.warning { background: var(--warning); }
+        #time-gauge-bar.danger { background: var(--danger); animation: gauge-pulse 0.6s infinite alternate; }
+        @keyframes gauge-pulse { from { opacity: 1; } to { opacity: 0.4; } }
+
+        /* 上部のスコア・コンボ表示エリア */
+        #score-area {
+            width: 100%; text-align: center; padding: 5px 0;
+            position: relative; flex-shrink: 0; z-index: 4;
+            height: 70px; display: flex; flex-direction: column; justify-content: center;
+        }
+        #big-score {
+            font-size: 3.5rem; font-weight: 900; color: #ffffff;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            font-family: 'Impact', sans-serif; letter-spacing: 2px; margin: 0; line-height: 1;
+        }
+        #combo-label {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3rem; font-weight: 900; color: #ff9f43;
+            text-shadow: 3px 3px 0 #d35400, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+            font-family: 'Impact', sans-serif; white-space: nowrap;
+            pointer-events: none; opacity: 0; z-index: 10;
+        }
+        .combo-anim { animation: comboPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes comboPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-15deg); }
+            30% { opacity: 1; transform: translate(-50%, -80%) scale(1.3) rotate(5deg); color: #feca57; }
+            50% { opacity: 1; transform: translate(-50%, -70%) scale(1.1) rotate(0deg); color: #ff9f43; }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(1); }
+        }
+
+        /* カードグリッド */
+        #board-container {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 5px 15px; width: 100%; box-sizing: border-box;
+            perspective: 1000px; z-index: 2; overflow-y: auto;
+        }
+        #card-grid {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+            width: 100%; max-height: 100%; align-content: center;
+        }
+        .card {
+            width: calc(25% - 8px); aspect-ratio: 3/4;
+            max-width: 85px; max-height: 115px;
+            perspective: 1000px; cursor: pointer; position: relative;
+        }
+        .card-inner {
+            width: 100%; height: 100%; position: relative;
+            transition: transform 0.4s; transform-style: preserve-3d;
+        }
+        .card.flipped .card-inner, .card.matched .card-inner, .card.xray-reveal .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute; inset: 0; backface-visibility: hidden; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4); overflow: hidden;
+        }
+        .card-front { background: var(--card-front); transform: rotateY(180deg); }
+        .card-back {
+            background: var(--card-back);
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px);
+            transition: box-shadow 0.3s, background-color 0.3s;
+        }
+        
+        /* 危険察知スキルのエフェクト */
+        .danger-glow .card-back {
+            background-color: #4a1c1c !important; border: 2px solid var(--danger);
+            box-shadow: inset 0 0 15px var(--danger); background-image: none;
+        }
+        .blind-mode .card-back { background: #111 !important; border: 2px solid #333; background-image: none; }
+
+        .card[data-special-type="merit"] .card-front { background: var(--merit-bg); border: 3px solid var(--merit-border); }
+        .card[data-special-type="demerit"] .card-front { background: var(--demerit-bg); border: 3px solid var(--demerit-border); }
+        .special-icon { position: absolute; top: 3px; right: 3px; font-size: 1rem; }
+        .card-front img { width: 75%; height: 75%; object-fit: contain; }
+        .fallback-text { font-size: 2.5rem; display: none; }
+        
+        /* お助けスキルバー */
+        #skill-bar {
+            width: 100%; display: flex; justify-content: center; gap: 10px;
+            padding: 15px 10px; background: rgba(0, 0, 0, 0.6); border-top: 2px solid #0f1526;
+            box-sizing: border-box; z-index: 5; flex-shrink: 0;
+        }
+        .skill-btn {
+            flex: 1; max-width: 120px; padding: 10px 5px; font-size: 0.95rem; font-weight: bold;
+            color: #fff; background: #34495e; border: 2px solid #7f8c8d; border-radius: 8px;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+        }
+        .skill-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .skill-btn.used {
+            opacity: 0.4; pointer-events: none; filter: grayscale(1); background: #2c3e50; border-color: #34495e;
+        }
+        .skill-icon { font-size: 1.5rem; }
+
+        /* スキル発動時のセンターテキスト演出 */
+        #center-message {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: 900; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            pointer-events: none; opacity: 0; z-index: 100; white-space: nowrap;
+        }
+        .message-anim { animation: msgPop 1.5s ease-out forwards; }
+        @keyframes msgPop {
+            0% { opacity: 0; transform: translate(-50%, -40%) scale(0.8); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
+        }
+
+        .score-float {
+            position: absolute; color: var(--warning); font-weight: bold;
+            font-size: 1.8rem; pointer-events: none; animation: floatUp 1s forwards;
+            z-index: 20; text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-40px) scale(1.2); } }
+
+        .result-details { background: rgba(0,0,0,0.5); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: left; width: 85%; max-width: 320px; }
+        .result-details div { margin: 8px 0; display: flex; justify-content: space-between; font-size: 1.1rem;}
+        #effect-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; transition: background 0.2s; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="effect-layer"></div>
+    <div id="center-message"></div>
+
+    <div id="title-screen" class="screen active">
+        <h1>Survival Memory<br><span style="font-size:1rem">Time Attack Ver.4</span></h1>
+        <p style="margin-top: 30px;">ハイスコア: <span id="title-highscore" style="color:var(--warning); font-weight:bold;">0</span></p>
+        <button class="btn" onclick="Game.start()">ゲームスタート</button>
+    </div>
+
+    <div id="play-screen" class="screen">
+        <div id="ui-header">
+            <div id="stage-indicator">STAGE <span id="ui-stage" style="color:var(--warning);">1</span></div>
+            <div id="time-gauge-container">
+                <div id="time-gauge-bar"></div>
+            </div>
+        </div>
+
+        <div id="score-area">
+            <div id="big-score">0</div>
+            <div id="combo-label">COMBO!</div>
+        </div>
+
+        <div id="board-container">
+            <div id="card-grid"></div>
+        </div>
+
+        <div id="skill-bar">
+            <button class="skill-btn" id="btn-xray" onclick="Game.useSkill('xray')">
+                <span class="skill-icon">👁️</span><span>透視</span>
+            </button>
+            <button class="skill-btn" id="btn-autopair" onclick="Game.useSkill('autopair')">
+                <span class="skill-icon">🎯</span><span>自動ペア</span>
+            </button>
+            <button class="skill-btn" id="btn-danger" onclick="Game.useSkill('danger')">
+                <span class="skill-icon">⚠️</span><span>危険察知</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1 id="result-title" style="color: var(--danger);">TIME UP!</h1>
+        <div class="result-details">
+            <div><span>到達ステージ:</span> <span id="res-stage" style="color:var(--warning);">1</span></div>
+            <div><span>獲得スコア:</span> <span id="res-score" style="font-size:1.5rem; color:var(--warning); font-weight:bold;">0</span></div>
+            <div><span>最大コンボ:</span> <span id="res-max-combo">0</span></div>
+        </div>
+        <p style="margin: 10px 0;">ハイスコア: <span id="res-highscore">0</span></p>
+        <button class="btn" onclick="Game.start()">もう一度遊ぶ</button>
+        <button class="btn" style="background:#7f8c8d; margin-top:10px; padding: 10px 20px; font-size: 1rem;" onclick="Game.showTitle()">タイトルへ</button>
+    </div>
+</div>
+
+<script>
+/* =========================================
+   設定 (CONFIG)
+========================================= */
+const CONFIG = {
+    initialTime: 45, gaugeMaxTime: 45, memoryPhaseTime: 2000, clearBonusTime: 12,
+    baseScore: 100, stageBonusBase: 1000, assetPath: 'sprite/', extension: '.png',
+    normalCards: [
+        { id: 'c1', emoji: '🍎' }, { id: 'c2', emoji: '🍌' }, { id: 'c3', emoji: '🍇' }, { id: 'c4', emoji: '🍈' },
+        { id: 'c5', emoji: '🍊' }, { id: 'c6', emoji: '🍑' }, { id: 'c7', emoji: '🍒' }, { id: 'c8', emoji: '🥝' },
+        { id: 'c9', emoji: '🍅' }, { id: 'c10', emoji: '🍆' }, { id: 'c11', emoji: '🥑' }, { id: 'c12', emoji: '🥕' },
+        { id: 'c13', emoji: '🌽' }, { id: 'c14', emoji: '🥔' }, { id: 'c15', emoji: '🍠' }, { id: 'c16', emoji: '🍍' }
+    ],
+    specialCards: [
+        { id: 'sp_time_plus', emoji: '⏱️', type: 'merit', icon:'⬆️', name:'TIME +5s', effect:'time', value: 5 },
+        { id: 'sp_score_x2',  emoji: '⭐', type: 'merit', icon:'⬆️', name:'SCORE x2', effect:'boost', value: 2 },
+        { id: 'sp_hint',      emoji: '💡', type: 'merit', icon:'⬆️', name:'HINT',    effect:'hint', value: null },
+        { id: 'sp_time_minus',emoji: '⏱️', type: 'demerit', icon:'⬇️', name:'TIME -5s', effect:'time', value: -5 },
+        { id: 'sp_shuffle',   emoji: '🌪️', type: 'demerit', icon:'⬇️', name:'SHUFFLE',effect:'shuffle', value: null },
+        { id: 'sp_blind',     emoji: '🕶️', type: 'demerit', icon:'⬇️', name:'BLIND',  effect:'blind', value: null }
+    ]
+};
+
+const Game = {
+    state: 'title', time: 0, score: 0, stage: 1, combo: 0, maxCombo: 0, scoreMultiplier: 1,
+    timerId: null, lastTick: 0, cards: [], flippedCards: [], normalPairsTotal: 0, normalPairsMatched: 0,
+    skills: { xray: true, autopair: true, danger: true }, // スキル使用可能フラグ
+    
+    els: {
+        gameContainer: document.getElementById('game-container'),
+        titleScreen: document.getElementById('title-screen'), playScreen: document.getElementById('play-screen'), resultScreen: document.getElementById('result-screen'),
+        cardGrid: document.getElementById('card-grid'), uiStage: document.getElementById('ui-stage'),
+        timeGaugeBar: document.getElementById('time-gauge-bar'), bigScore: document.getElementById('big-score'),
+        comboLabel: document.getElementById('combo-label'), effectLayer: document.getElementById('effect-layer'),
+        resMaxCombo: document.getElementById('res-max-combo'), centerMsg: document.getElementById('center-message'),
+        btnXray: document.getElementById('btn-xray'), btnAutopair: document.getElementById('btn-autopair'), btnDanger: document.getElementById('btn-danger')
+    },
+
+    getHighScore() { return parseInt(localStorage.getItem('survivalMemoryHS_v4')) || 0; },
+    setHighScore(score) { if (score > this.getHighScore()) localStorage.setItem('survivalMemoryHS_v4', score); },
+
+    switchScreen(screenName) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        this.els[screenName + 'Screen'].classList.add('active');
+        if (screenName === 'title') document.getElementById('title-highscore').innerText = this.getHighScore().toLocaleString();
+        if (screenName === 'result') {
+            document.getElementById('res-stage').innerText = this.stage; document.getElementById('res-score').innerText = this.score.toLocaleString();
+            this.els.resMaxCombo.innerText = this.maxCombo; document.getElementById('res-highscore').innerText = this.getHighScore().toLocaleString();
+        }
+    },
+    showTitle() { this.switchScreen('title'); },
+
+    start() {
+        this.time = CONFIG.initialTime; this.score = 0; this.stage = 1; this.combo = 0; this.maxCombo = 0; this.scoreMultiplier = 1;
+        this.switchScreen('play'); this.nextStage(true); this.startGameLoop(); this.updateUI();
+    },
+
+    nextStage(isFirst = false) {
+        if (!isFirst) {
+            this.time += CONFIG.clearBonusTime; this.score += this.stage * CONFIG.stageBonusBase; this.stage++;
+            this.flashEffect('rgba(46, 204, 113, 0.4)');
+        }
+        this.normalPairsMatched = 0; this.flippedCards = [];
+        this.els.cardGrid.innerHTML = ''; this.els.cardGrid.classList.remove('blind-mode');
+        
+        // ★難易度カーブの緩和★ 2ステージごとに1ペア増える
+        let pairCount = Math.min(3 + Math.floor(this.stage / 2), 8); 
+        if(this.stage === 1) pairCount = 3; // 初期は3ペア固定
+        this.normalPairsTotal = pairCount;
+        
+        // 特殊カードも少しずつ増加
+        let specialCount = (this.stage >= 3) ? Math.min(Math.floor((this.stage - 1) / 2), 4) : 0;
+
+        // スキルの回復（毎ステージ）
+        this.skills = { xray: true, autopair: true, danger: true };
+        this.updateSkillUI();
+
+        this.generateDeck(pairCount, specialCount);
+        this.renderBoard();
+        this.startMemoryPhase();
+    },
+
+    updateSkillUI() {
+        this.els.btnXray.classList.toggle('used', !this.skills.xray);
+        this.els.btnAutopair.classList.toggle('used', !this.skills.autopair);
+        this.els.btnDanger.classList.toggle('used', !this.skills.danger);
+    },
+
+    // ==========================================
+    // お助けスキル発動ロジック
+    // ==========================================
+    useSkill(skillName) {
+        if (this.state !== 'play' || !this.skills[skillName]) return;
+
+        if (skillName === 'xray') {
+            // 透視: めくられていない全カードを1.5秒だけ表にする
+            this.skills.xray = false;
+            this.showCenterMessage("👁️ 透視発動！", "#3498db");
+            const targets = this.cards.filter(c => !c.matched && !c.el.classList.contains('flipped'));
+            targets.forEach(c => { c.el.classList.add('xray-reveal'); c.el.style.pointerEvents = 'none'; }); // タッチブロック
+            setTimeout(() => {
+                targets.forEach(c => { c.el.classList.remove('xray-reveal'); c.el.style.pointerEvents = 'auto'; });
+            }, 1500);
+            
+        } else if (skillName === 'autopair') {
+            // 自動ペア: まだ揃っていない通常カードを自動で1組めくる
+            if (this.flippedCards.length > 0) return; // プレイヤーがめくっている途中は使えない
+            const unMatchedNormals = this.cards.filter(c => !c.matched && !c.isSpecial);
+            if (unMatchedNormals.length < 2) return;
+            
+            this.skills.autopair = false;
+            this.showCenterMessage("🎯 自動ペア！", "#9b59b6");
+            
+            const targetId = unMatchedNormals[0].id;
+            const pairCards = unMatchedNormals.filter(c => c.id === targetId);
+            
+            pairCards.forEach(c => c.el.classList.add('flipped'));
+            this.flippedCards = [{card: pairCards[0], el: pairCards[0].el}, {card: pairCards[1], el: pairCards[1].el}];
+            setTimeout(() => this.checkMatch(), 600); // 通常の判定処理に流す
+            
+        } else if (skillName === 'danger') {
+            // 危険察知: デメリット特殊カードの裏面を赤く光らせる（ステージ中持続）
+            this.skills.danger = false;
+            this.showCenterMessage("⚠️ 危険察知！", "#e74c3c");
+            const dangers = this.cards.filter(c => c.isSpecial && c.type === 'demerit' && !c.matched);
+            dangers.forEach(c => c.el.classList.add('danger-glow'));
+        }
+        
+        this.updateSkillUI();
+    },
+
+    showCenterMessage(text, color) {
+        const msg = this.els.centerMsg;
+        msg.innerText = text; msg.style.color = color;
+        msg.classList.remove('message-anim'); void msg.offsetWidth; msg.classList.add('message-anim');
+    },
+
+    generateDeck(pairCount, specialCount) {
+        this.cards = [];
+        const shuffledNormals = [...CONFIG.normalCards].sort(() => 0.5 - Math.random()).slice(0, pairCount);
+        shuffledNormals.forEach((card, i) => {
+            this.cards.push({ ...card, uid: `n_${i}_1`, isSpecial: false, matched: false });
+            this.cards.push({ ...card, uid: `n_${i}_2`, isSpecial: false, matched: false });
+        });
+        if (specialCount > 0) {
+            const shuffledSpecials = [...CONFIG.specialCards].sort(() => 0.5 - Math.random());
+            for (let i = 0; i < specialCount; i++) {
+                this.cards.push({ ...shuffledSpecials[i % shuffledSpecials.length], uid: `s_${i}`, isSpecial: true, matched: false });
+            }
+        }
+        this.cards.forEach(card => card.order = Math.floor(Math.random() * 1000));
+    },
+
+    renderBoard() {
+        const total = this.cards.length; let cols = (total <= 6) ? 3 : (total <= 16) ? 4 : 5;
+        const cardWidth = `calc(${100/cols}% - 8px)`;
+        this.cards.forEach(card => {
+            const el = document.createElement('div'); el.className = 'card'; el.dataset.uid = card.uid;
+            el.style.order = card.order; el.style.width = cardWidth;
+            if(card.isSpecial) el.dataset.specialType = card.type;
+            const fallbackFn = `this.style.display='none'; this.nextElementSibling.style.display='block';`;
+            el.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-front">${card.isSpecial ? `<span class="special-icon">${card.icon}</span>` : ''}
+                        <img src="${CONFIG.assetPath}${card.id}${CONFIG.extension}" onerror="${fallbackFn}" alt="${card.id}">
+                        <div class="fallback-text">${card.emoji}</div>
+                    </div><div class="card-back"></div>
+                </div>`;
+            el.addEventListener('pointerdown', (e) => { e.preventDefault(); this.handleCardClick(card, el); });
+            this.els.cardGrid.appendChild(el); card.el = el;
+        });
+    },
+
+    startMemoryPhase() {
+        this.state = 'memory';
+        setTimeout(() => this.cards.forEach(c => c.el.classList.add('flipped')), 100);
+        setTimeout(() => { this.cards.forEach(c => c.el.classList.remove('flipped')); this.state = 'play'; }, CONFIG.memoryPhaseTime);
+    },
+
+    handleCardClick(card, el) {
+        if (this.state !== 'play' || card.matched || el.classList.contains('flipped') || this.flippedCards.length >= 2) return;
+        el.classList.add('flipped');
+        if (card.isSpecial) {
+            this.activateSpecialCard(card); card.matched = true;
+            setTimeout(() => { el.style.visibility = 'hidden'; }, 600); return;
+        }
+        this.flippedCards.push({ card, el });
+        if (this.flippedCards.length === 2) this.checkMatch();
+    },
+
+    checkMatch() {
+        const [first, second] = this.flippedCards;
+        if (first.card.id === second.card.id) {
+            this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo);
+            let earnedScore = Math.floor(CONFIG.baseScore * (1 + (this.combo - 1) * 0.5) * this.scoreMultiplier);
+            this.score += earnedScore; this.scoreMultiplier = 1;
+            first.card.matched = second.card.matched = true; this.normalPairsMatched++;
+            this.showFloatingScore(first.el, `+${earnedScore}`, 'var(--warning)');
+            
+            if(this.combo >= 2) {
+                const label = this.els.comboLabel; label.innerText = `${this.combo} COMBO!!`;
+                label.classList.remove('combo-anim'); void label.offsetWidth; label.classList.add('combo-anim');
+            }
+            let shakeClass = (this.combo >= 10) ? 'shake-l' : (this.combo >= 5) ? 'shake-m' : (this.combo >= 2) ? 'shake-s' : '';
+            if(shakeClass) {
+                this.els.gameContainer.classList.add(shakeClass);
+                if (this.combo >= 10) this.flashEffect('rgba(255,255,255,0.6)');
+                setTimeout(() => this.els.gameContainer.classList.remove(shakeClass), 500);
+            }
+            setTimeout(() => {
+                first.el.classList.add('matched'); second.el.classList.add('matched'); this.flippedCards = [];
+                if (this.normalPairsMatched === this.normalPairsTotal) {
+                    this.state = 'intermission'; setTimeout(() => this.nextStage(), 800);
+                }
+            }, 400);
+        } else {
+            this.combo = 0;
+            setTimeout(() => { first.el.classList.remove('flipped'); second.el.classList.remove('flipped'); this.flippedCards = []; }, 800);
+        }
+        this.updateUI();
+    },
+
+    activateSpecialCard(card) {
+        const color = card.type === 'merit' ? 'var(--success)' : 'var(--danger)';
+        this.showFloatingScore(card.el, card.name, color);
+        switch (card.effect) {
+            case 'time': this.time += card.value; this.flashEffect(card.value > 0 ? 'rgba(46, 204, 113, 0.4)' : 'rgba(231, 76, 60, 0.4)'); break;
+            case 'boost': this.scoreMultiplier = card.value; this.flashEffect('rgba(241, 196, 15, 0.4)'); break;
+            case 'hint':
+                const targets = this.cards.filter(c => !c.matched && !c.isSpecial && !c.el.classList.contains('flipped')).sort(() => 0.5 - Math.random()).slice(0, 3);
+                targets.forEach(c => c.el.classList.add('flipped')); setTimeout(() => targets.forEach(c => c.el.classList.remove('flipped')), 1200); break;
+            case 'shuffle':
+                this.cards.forEach(c => { if(!c.matched) c.el.style.order = c.order = Math.floor(Math.random()*1000); }); this.flashEffect('rgba(231, 76, 60, 0.4)'); break;
+            case 'blind': this.els.cardGrid.classList.add('blind-mode'); setTimeout(() => this.els.cardGrid.classList.remove('blind-mode'), 3500); break;
+        }
+        this.updateUI();
+    },
+
+    flashEffect(color) { this.els.effectLayer.style.background = color; setTimeout(() => this.els.effectLayer.style.background = 'transparent', 250); },
+    showFloatingScore(el, text, color) {
+        const rect = el.getBoundingClientRect(); const cRect = this.els.gameContainer.getBoundingClientRect();
+        const fEl = document.createElement('div'); fEl.className = 'score-float'; fEl.innerText = text; fEl.style.color = color;
+        fEl.style.left = (rect.left - cRect.left + rect.width/4) + 'px'; fEl.style.top = (rect.top - cRect.top) + 'px';
+        this.els.gameContainer.appendChild(fEl); setTimeout(() => fEl.remove(), 1000);
+    },
+
+    startGameLoop() {
+        this.lastTick = performance.now();
+        const loop = (timestamp) => {
+            if (this.state === 'gameover') return;
+            const delta = (timestamp - this.lastTick) / 1000; this.lastTick = timestamp;
+            if (this.state === 'play') {
+                this.time -= delta; if (this.time <= 0) { this.time = 0; this.gameOver(); }
+                this.updateUI();
+            }
+            this.timerId = requestAnimationFrame(loop);
+        };
+        this.timerId = requestAnimationFrame(loop);
+    },
+
+    updateUI() {
+        this.els.uiStage.innerText = this.stage; this.els.bigScore.innerText = this.score.toLocaleString();
+        const percentage = Math.min(Math.max(this.time / CONFIG.gaugeMaxTime, 0), 1) * 100;
+        this.els.timeGaugeBar.style.width = `${percentage}%`;
+        this.els.timeGaugeBar.classList.remove('warning', 'danger');
+        if (percentage < 20) this.els.timeGaugeBar.classList.add('danger');
+        else if (percentage < 50) this.els.timeGaugeBar.classList.add('warning');
+    },
+
+    gameOver() { this.state = 'gameover'; cancelAnimationFrame(this.timerId); this.setHighScore(this.score); this.switchScreen('result'); }
+};
+
+document.getElementById('game-container').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+window.onload = () => Game.showTitle();
+</script>
+</body>
+</html>
