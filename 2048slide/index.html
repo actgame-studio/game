@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Merge & Jam 6x6</title>
+    <title>Pastel Merge 6x6</title>
     <style>
+        /* パステル調の新しいカラーパレット */
         :root {
-            --bg-color: #faf8ef;
-            --text-color: #776e65;
-            --board-bg: #bbada0;
-            --primary-btn: #8f7a66;
-            --primary-btn-hover: #9f8b77;
+            --bg-color: #fcf8f3;      /* 全体の背景: クリーミーなオフホワイト */
+            --text-color: #8a7f75;    /* テキスト: 柔らかいグレーベージュ */
+            --board-bg: #f0e6db;      /* 盤面背景: 淡いパステルベージュ */
+            --primary-btn: #ffb7c5;   /* ボタン: パステルピンク */
+            --primary-btn-hover: #ff9eb0;
+            --score-bg: #e8d3c5;      /* スコアボックス背景 */
         }
 
         * {
@@ -23,7 +25,7 @@
             padding: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Rounded Mplus 1c', 'Helvetica Neue', Arial, sans-serif; /* 丸文字フォントを優先 */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -50,36 +52,50 @@
             background-color: var(--bg-color);
             z-index: 10;
         }
-        .screen.active {
-            display: flex;
-        }
+        .screen.active { display: flex; }
 
-        h1 { font-size: 2.5rem; margin-bottom: 20px; text-align: center; }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--text-color);
+            /* タイトルの可愛らしい立体感 */
+            text-shadow: 2px 2px 0px #fff, 4px 4px 0px #e8d3c5;
+        }
         
-        .score-box { 
-            background: var(--board-bg); 
-            color: white; 
+        .info-box { 
+            background: var(--score-bg); 
+            color: #fff; 
             padding: 8px 15px; 
-            border-radius: 6px; 
+            border-radius: 15px; /* 丸みを強く */
             font-weight: bold; 
             text-align: center; 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1); /* 柔らかい影 */
+            min-width: 80px;
         }
-        .score-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;}
-        .score-value { font-size: 1.4rem; line-height: 1.2;}
+        .info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #fffaf0;}
+        .info-value { font-size: 1.4rem; line-height: 1.2; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);}
 
         button {
             background-color: var(--primary-btn);
             color: white;
             border: none;
-            padding: 15px 30px;
-            font-size: 1.2rem;
+            padding: 15px 35px;
+            font-size: 1.3rem;
             font-weight: bold;
-            border-radius: 8px;
+            border-radius: 25px; /* まんまるボタン */
             cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 20px;
+            transition: all 0.2s;
+            margin-top: 25px;
+            box-shadow: 0 5px 10px rgba(255, 183, 197, 0.4);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
-        button:hover { background-color: var(--primary-btn-hover); }
+        button:hover { 
+            background-color: var(--primary-btn-hover); 
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(255, 183, 197, 0.5);
+        }
+        button:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
         #game-screen.active {
             display: flex;
@@ -95,15 +111,23 @@
             align-items: flex-end;
             width: 96vw;
             max-width: 536px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .game-title {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: bold;
             margin: 0;
             color: var(--text-color);
             line-height: 1;
+            text-shadow: 2px 2px 0px #fff, 3px 3px 0px #e8d3c5;
         }
 
         .canvas-wrapper {
@@ -112,34 +136,45 @@
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             position: relative;
+            border-radius: 20px;
+            /* 盤面自体の立体感 */
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.05), 0 8px 16px rgba(0,0,0,0.08);
+            padding: 8px; /* Canvasとの間に隙間を作る */
+            background-color: var(--board-bg);
         }
 
         canvas {
             width: 100%;
             height: 100%;
             display: block;
-            border-radius: 8px;
+            border-radius: 16px;
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div id="app-container">
     <div id="title-screen" class="screen active">
-        <h1>Merge & Jam</h1>
-        <div class="score-box">
-            <div class="score-label">HIGH SCORE</div>
-            <div class="score-value" id="title-highscore">0</div>
+        <h1>Pastel Merge</h1>
+        <div class="info-box">
+            <div class="info-label">HIGH SCORE</div>
+            <div class="info-value" id="title-highscore">0</div>
         </div>
         <button id="start-btn">START GAME</button>
     </div>
 
     <div id="game-screen" class="screen">
         <div class="header">
-            <div class="game-title">6x6</div>
-            <div class="score-box">
-                <div class="score-label">SCORE</div>
-                <div class="score-value" id="game-score">0</div>
+            <div class="header-left">
+                <div class="game-title">6x6</div>
+                <div class="info-box" style="background: #bde0fe;"> <div class="info-label">MOVES</div>
+                    <div class="info-value" id="game-moves">150</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">SCORE</div>
+                <div class="info-value" id="game-score">0</div>
             </div>
         </div>
         <div class="canvas-wrapper">
@@ -149,9 +184,9 @@
 
     <div id="result-screen" class="screen">
         <h1 id="result-title">Game Over</h1>
-        <div class="score-box">
-            <div class="score-label">FINAL SCORE</div>
-            <div class="score-value" id="result-score">0</div>
+        <div class="info-box">
+            <div class="info-label">FINAL SCORE</div>
+            <div class="info-value" id="result-score">0</div>
         </div>
         <button id="retry-btn">PLAY AGAIN</button>
     </div>
@@ -163,6 +198,7 @@ const CONFIG = {
     cellSize: 80, 
     gap: 8,
     targetValue: 2048,
+    initialMoves: 150, // 初期手数（少し余裕をもたせる）
     
     sizeMap: {
         2: 1, 4: 1, 8: 1, 16: 1, 32: 1, 64: 1, 128: 1, 256: 1, 
@@ -182,29 +218,35 @@ const CONFIG = {
         2, 2, 2, 2      
     ],
 
-    imagePaths: {
-        2: "sprite/2.png", 4: "sprite/4.png", 8: "sprite/8.png", 16: "sprite/16.png",
-        32: "sprite/32.png", 64: "sprite/64.png", 128: "sprite/128.png", 256: "sprite/256.png",
-        512: "sprite/512.png", 1024: "sprite/1024.png", 2048: "sprite/2048.png"
-    },
+    // パステル調の可愛いカラーパレット (マカロンカラー)
     colors: {
-        empty: "rgba(238, 228, 218, 0.35)",
-        2: "#eee4da", 4: "#ede0c8", 8: "#f2b179", 16: "#f59563",
-        32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72", 256: "#edcc61",
-        512: "#edc850", 1024: "#edc53f", 2048: "#edc22e"
+        empty: "rgba(245, 238, 230, 0.6)", // 空マス: 半透明のクリーム色
+        2: "#ffcfd8",    // パステルピンク
+        4: "#fff2b2",    // パステルレモン
+        8: "#c7ebd1",    // パステルミント
+        16: "#cce2ff",   // パステルブルー
+        32: "#e2d5ff",   // パステルラベンダー
+        64: "#ffdec7",   // パステルオレンジ
+        128: "#ffb7c5",  // 濃いめピンク
+        256: "#ffe082",  // 濃いめイエロー
+        512: "#a7e8bd",  // 濃いめグリーン
+        1024: "#a3d2ff", // 濃いめブルー
+        2048: "#d5baff", // 濃いめパープル
+        textDark: "#8a7f75", // 数字の色（濃い文字）
+        textLight: "#fff"    // 数字の色（明るい文字）
     }
 };
 
 let state = {
     tiles: [],
     score: 0,
+    moves: 0, // 残り手数
     highScore: localStorage.getItem('mergeJamHighScore') || 0,
     selectedId: null,
     isGameOver: false,
     tileCounter: 0
 };
 
-let loadedImages = {};
 let canvas, ctx;
 let animationFrameId;
 
@@ -216,12 +258,6 @@ function init() {
     canvas.width = boardPx;
     canvas.height = boardPx;
     document.getElementById('title-highscore').innerText = state.highScore;
-
-    for (let key in CONFIG.imagePaths) {
-        let img = new Image();
-        img.src = CONFIG.imagePaths[key];
-        img.onload = () => { loadedImages[key] = img; };
-    }
 
     bindEvents();
     renderLoop();
@@ -294,9 +330,10 @@ function switchScreen(screenId) {
 function startGame() {
     state.tiles = [];
     state.score = 0;
+    state.moves = CONFIG.initialMoves; // 手数を初期化
     state.selectedId = null;
     state.isGameOver = false;
-    updateScore();
+    updateUI();
     
     let sortedPool = [...CONFIG.initialPool].sort((a,b) => b - a);
     sortedPool.forEach(val => {
@@ -357,6 +394,8 @@ function handleSwipe(startX, startY, endX, endY) {
 }
 
 function processMove(tileId, dx, dy) {
+    if(state.moves <= 0) return; // 手数切れなら動かせない
+
     let tile = state.tiles.find(t => t.id === tileId);
     if(!tile) return;
 
@@ -364,7 +403,6 @@ function processMove(tileId, dx, dy) {
     let currentGy = tile.gy;
     let targetGx = currentGx;
     let targetGy = currentGy;
-
     let hitTile = null;
     let willMerge = false;
 
@@ -372,19 +410,14 @@ function processMove(tileId, dx, dy) {
         let nextGx = targetGx + dx;
         let nextGy = targetGy + dy;
 
-        // 壁チェック
-        if(nextGx < 0 || nextGy < 0 || nextGx + tile.size > CONFIG.gridSize || nextGy + tile.size > CONFIG.gridSize) {
-            break; 
-        }
+        if(nextGx < 0 || nextGy < 0 || nextGx + tile.size > CONFIG.gridSize || nextGy + tile.size > CONFIG.gridSize) break; 
 
-        // 衝突チェック
         let cols = state.tiles.filter(t => t.id !== tile.id && 
             nextGx < t.gx + t.size && nextGx + tile.size > t.gx && 
             nextGy < t.gy + t.size && nextGy + tile.size > t.gy);
 
         if(cols.length === 0) {
-            targetGx = nextGx;
-            targetGy = nextGy;
+            targetGx = nextGx; targetGy = nextGy;
         } else if (cols.length === 1) {
             let target = cols[0];
             let isAligned = false;
@@ -394,90 +427,73 @@ function processMove(tileId, dx, dy) {
             if(isAligned && tile.val === target.val) {
                 let newVal = tile.val * 2;
                 let newSize = CONFIG.sizeMap[newVal] || tile.size;
-
                 let tempTiles = state.tiles.filter(t => t.id !== tile.id && t.id !== target.id);
                 let canGrow = false;
-                let finalGx = target.gx;
-                let finalGy = target.gy;
+                let finalGx = target.gx; let finalGy = target.gy;
 
-                // ★修正箇所：全方位の空きスペースを探索して巨大化できるか判定する★
                 if (newSize === target.size) {
                     canGrow = true;
                 } else {
                     let candidates = [];
-                    // 新しいサイズのパネルが、元のtargetのパネルを完全に覆える全座標パターンをループ
                     for(let cy = target.gy - newSize + target.size; cy <= target.gy; cy++) {
                         for(let cx = target.gx - newSize + target.size; cx <= target.gx; cx++) {
-                            // 盤面からはみ出さないか
                             if(cx >= 0 && cy >= 0 && cx + newSize <= CONFIG.gridSize && cy + newSize <= CONFIG.gridSize) {
                                 let collision = false;
-                                // 他のパネルと重ならないか
                                 for(let t of tempTiles) {
                                     if(cx < t.gx + t.size && cx + newSize > t.gx && cy < t.gy + t.size && cy + newSize > t.gy) {
-                                        collision = true;
-                                        break;
+                                        collision = true; break;
                                     }
                                 }
-                                if(!collision) {
-                                    candidates.push({x: cx, y: cy});
-                                }
+                                if(!collision) candidates.push({x: cx, y: cy});
                             }
                         }
                     }
-
-                    // 1つでも置ける場所があれば合体許可
                     if(candidates.length > 0) {
                         canGrow = true;
-                        // 可能な配置先のうち、元の位置に一番近いものを採用する
-                        candidates.sort((a, b) => {
-                            return (Math.abs(a.x - target.gx) + Math.abs(a.y - target.gy)) - (Math.abs(b.x - target.gx) + Math.abs(b.y - target.gy));
-                        });
-                        finalGx = candidates[0].x;
-                        finalGy = candidates[0].y;
+                        candidates.sort((a, b) => (Math.abs(a.x - target.gx) + Math.abs(a.y - target.gy)) - (Math.abs(b.x - target.gx) + Math.abs(b.y - target.gy)));
+                        finalGx = candidates[0].x; finalGy = candidates[0].y;
                     }
                 }
 
                 if(canGrow) {
-                    targetGx = nextGx; 
-                    targetGy = nextGy;
-                    hitTile = target;
-                    willMerge = true;
-                    // 合体後に生まれる新パネルの「決定した左上座標」を保持しておく
-                    hitTile.finalGx = finalGx;
-                    hitTile.finalGy = finalGy;
+                    targetGx = nextGx; targetGy = nextGy;
+                    hitTile = target; willMerge = true;
+                    hitTile.finalGx = finalGx; hitTile.finalGy = finalGy;
                 }
             }
             break; 
-        } else {
-            break;
-        }
+        } else { break; }
     }
 
+    // 実際に移動が発生した場合のみ手数を消費
     if(targetGx !== currentGx || targetGy !== currentGy) {
+        state.moves--; // 手数を減らす
+        
         if(willMerge) {
             let newVal = tile.val * 2;
             state.score += newVal;
-            updateScore();
-            
             state.tiles = state.tiles.filter(t => t.id !== tile.id && t.id !== hitTile.id);
-            
-            // 探索して見つけた最適な座標に新パネルを生成
             let fGx = hitTile.finalGx !== undefined ? hitTile.finalGx : hitTile.gx;
             let fGy = hitTile.finalGy !== undefined ? hitTile.finalGy : hitTile.gy;
             addTile(fGx, fGy, newVal);
-            
             state.selectedId = state.tiles[state.tiles.length - 1].id;
-
             if(newVal === CONFIG.targetValue) endGame(true);
         } else {
-            tile.gx = targetGx;
-            tile.gy = targetGy;
+            tile.gx = targetGx; tile.gy = targetGy;
         }
-        checkStuck();
+        
+        updateUI();
+        checkGameOver(); // 詰み or 手数切れチェック
     }
 }
 
-function checkStuck() {
+// 詰み判定と手数切れ判定を統合
+function checkGameOver() {
+    if (state.moves <= 0) {
+        endGame(false); // 手数切れでゲームオーバー
+        return;
+    }
+
     let canMoveAny = false;
     for(let t of state.tiles) {
         for(let dir of [[0,-1], [0,1], [-1,0], [1,0]]) {
@@ -491,8 +507,9 @@ function checkStuck() {
     if(!canMoveAny) endGame(false);
 }
 
-function updateScore() {
+function updateUI() {
     document.getElementById('game-score').innerText = state.score;
+    document.getElementById('game-moves').innerText = state.moves; // 手数表示更新
     if(state.score > state.highScore) {
         state.highScore = state.score;
         localStorage.setItem('mergeJamHighScore', state.highScore);
@@ -500,6 +517,7 @@ function updateScore() {
 }
 
 function endGame(isWin) {
+    if(state.isGameOver) return;
     state.isGameOver = true;
     setTimeout(() => {
         document.getElementById('result-title').innerText = isWin ? "Clear!" : "Game Over...";
@@ -510,56 +528,102 @@ function endGame(isWin) {
 }
 
 function renderLoop() {
-    ctx.fillStyle = "#bbada0"; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 盤面背景をクリア（透明にする）
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // 空マスの描画（可愛らしく丸く、少し立体的に）
     for(let y=0; y<CONFIG.gridSize; y++) {
         for(let x=0; x<CONFIG.gridSize; x++) {
             let px = CONFIG.gap + x * (CONFIG.cellSize + CONFIG.gap);
             let py = CONFIG.gap + y * (CONFIG.cellSize + CONFIG.gap);
-            ctx.fillStyle = CONFIG.colors.empty;
-            ctx.beginPath();
-            ctx.roundRect(px, py, CONFIG.cellSize, CONFIG.cellSize, 4);
-            ctx.fill();
+            drawRoundedRect(ctx, px, py, CONFIG.cellSize, CONFIG.cellSize, 12, CONFIG.colors.empty, false);
         }
     }
 
+    // パネルの描画
     state.tiles.forEach(tile => {
-        let targetPx = CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap);
-        let targetPy = CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap);
-        
-        tile.px += (targetPx - tile.px) * 0.4;
-        tile.py += (targetPy - tile.py) * 0.4;
+        tile.px += (CONFIG.gap + tile.gx * (CONFIG.cellSize + CONFIG.gap) - tile.px) * 0.4;
+        tile.py += (CONFIG.gap + tile.gy * (CONFIG.cellSize + CONFIG.gap) - tile.py) * 0.4;
 
         let drawSize = tile.size * CONFIG.cellSize + (tile.size - 1) * CONFIG.gap;
-        let img = loadedImages[tile.val];
+        let bgColor = CONFIG.colors[tile.val] || "#3c3a32";
+        let radius = tile.size > 1 ? 20 : 12; // 大きいパネルはより丸く
 
-        if(img && img.complete && img.naturalWidth !== 0) {
-            ctx.drawImage(img, tile.px, tile.py, drawSize, drawSize);
-        } else {
-            ctx.fillStyle = CONFIG.colors[tile.val] || "#3c3a32";
-            ctx.beginPath();
-            ctx.roundRect(tile.px, tile.py, drawSize, drawSize, tile.size > 1 ? 8 : 4);
-            ctx.fill();
-            
-            ctx.fillStyle = (tile.val <= 4) ? "#776e65" : "#f9f6f2";
-            let fontSize = CONFIG.cellSize * 0.45 * (tile.size * 0.85);
-            ctx.font = `bold ${fontSize}px Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2 + (fontSize*0.05));
-        }
+        // パネル本体（立体的な影付き）
+        drawRoundedRect(ctx, tile.px, tile.py, drawSize, drawSize, radius, bgColor, true);
 
+        // 数字の描画（丸文字フォントで可愛く）
+        ctx.fillStyle = (tile.val <= 64) ? CONFIG.colors.textDark : CONFIG.colors.textLight;
+        let fontSize = CONFIG.cellSize * 0.5 * (tile.size * 0.8);
+        ctx.font = `800 ${fontSize}px 'M PLUS Rounded 1c', Arial, sans-serif`; // 丸文字フォント指定
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // 文字にも少し影をつけて立体感を出す
+        ctx.shadowColor = "rgba(0,0,0,0.1)";
+        ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; ctx.shadowBlur = 2;
+        ctx.fillText(tile.val, tile.px + drawSize / 2, tile.py + drawSize / 2 + (fontSize*0.05));
+        ctx.shadowColor = "transparent"; // 影のリセット
+
+        // 選択中のハイライト（発光するように変更）
         if(state.selectedId === tile.id) {
-            ctx.strokeStyle = "#e74c3c";
-            ctx.lineWidth = 5;
-            ctx.beginPath();
-            ctx.roundRect(tile.px, tile.py, drawSize, drawSize, tile.size > 1 ? 8 : 4);
+            ctx.save();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 4;
+            ctx.shadowColor = bgColor; // パネルの色で発光
+            ctx.shadowBlur = 15;
+            drawRoundedRectPath(ctx, tile.px - 2, tile.py - 2, drawSize + 4, drawSize + 4, radius + 2);
             ctx.stroke();
+            ctx.restore();
         }
     });
 
     animationFrameId = requestAnimationFrame(renderLoop);
+}
+
+// 角丸長方形を描画するヘルパー関数（影付き対応）
+function drawRoundedRect(ctx, x, y, width, height, radius, color, hasShadow) {
+    ctx.save();
+    if (hasShadow) {
+        ctx.shadowColor = "rgba(0, 0, 0, 0.15)"; // 柔らかい影
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 6;
+        ctx.shadowBlur = 8;
+    }
+    ctx.fillStyle = color;
+    drawRoundedRectPath(ctx, x, y, width, height, radius);
+    ctx.fill();
+    
+    if (hasShadow) {
+        // 下部に少し濃い色を重ねて厚みを表現（簡易的な立体感）
+        ctx.shadowColor = "transparent";
+        ctx.globalCompositeOperation = "source-atop"; // 描画領域内のみに重ねる
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.beginPath();
+        ctx.moveTo(x, y + height - radius);
+        ctx.arcTo(x, y + height, x + radius, y + height, radius);
+        ctx.lineTo(x + width - radius, y + height);
+        ctx.arcTo(x + width, y + height, x + width, y + height - radius, radius);
+        ctx.lineTo(x + width, y + height - radius * 0.5);
+        ctx.lineTo(x, y + height - radius * 0.5);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+// 角丸のパスを定義するヘルパー関数
+function drawRoundedRectPath(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.arcTo(x + width, y, x + width, y + radius, radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+    ctx.lineTo(x + radius, y + height);
+    ctx.arcTo(x, y + height, x, y + height - radius, radius);
+    ctx.lineTo(x, y + radius);
+    ctx.arcTo(x, y, x + radius, y, radius);
+    ctx.closePath();
 }
 
 init();
