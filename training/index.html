@@ -83,16 +83,12 @@
     <div id="tab-log" class="tab-content">
         <div class="card">
             <h2>トレーニング記録</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <div>
-                    <label style="margin-top: 0;">日付</label>
-                    <input type="date" id="log-date">
-                </div>
-                <div>
-                    <label style="margin-top: 0;">本日の体重 (kg)</label>
-                    <input type="number" step="0.1" id="log-weight" placeholder="例: 65.5">
-                </div>
-            </div>
+            
+            <label style="margin-top: 0;">日付</label>
+            <input type="date" id="log-date" style="margin-bottom: 15px;" onchange="syncDateData()">
+            
+            <label style="margin-top: 0;">本日の体重 (kg)</label>
+            <input type="number" step="0.1" id="log-weight" style="margin-bottom: 20px;">
             
             <div class="type-toggle">
                 <button id="btn-type-weight" class="active weight" onclick="setLogType('weight')">🏋️ ウェイト</button>
@@ -100,9 +96,10 @@
             </div>
             
             <div id="area-weight">
-                <label>マシン名 (リストから選択 or 新規入力)</label>
-                <input type="text" id="machine-name-weight" list="machine-list-weight" placeholder="タップして選択..." onchange="autoFillPreviousSets()" onclick="this.value=''">
-                <datalist id="machine-list-weight"></datalist>
+                <label>マシン名</label>
+                <select id="machine-select-weight" onchange="handleMachineSelect('weight')"></select>
+                <input type="text" id="machine-custom-weight" class="hidden" placeholder="新しいマシン名を入力" style="margin-top: 10px;">
+                
                 <div id="auto-fill-msg" style="color: var(--primary-color); font-size: 0.8rem; margin-top: 5px; display: none;">✓ 前回のセット内容を自動入力しました</div>
                 
                 <div style="margin-top: 25px;">
@@ -113,9 +110,9 @@
             </div>
 
             <div id="area-cardio" class="hidden">
-                <label>有酸素メニュー (リストから選択 or 新規入力)</label>
-                <input type="text" id="machine-name-cardio" list="machine-list-cardio" placeholder="タップして選択..." onclick="this.value=''">
-                <datalist id="machine-list-cardio"></datalist>
+                <label>有酸素メニュー</label>
+                <select id="machine-select-cardio" onchange="handleMachineSelect('cardio')"></select>
+                <input type="text" id="machine-custom-cardio" class="hidden" placeholder="新しいメニュー名を入力" style="margin-top: 10px;">
 
                 <label style="margin-top: 15px;">実施時間</label>
                 <div class="input-group duration-row">
@@ -143,8 +140,7 @@
                 <div class="summary-count" id="summary-workout-days">0 <span>日</span></div>
             </div>
 
-            <div id="view-calendar" class="calendar-grid">
-                </div>
+            <div id="view-calendar" class="calendar-grid"></div>
 
             <div id="view-progress" class="hidden">
                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-sub);">
@@ -191,7 +187,7 @@
             <h2>ユーザー設定</h2>
             <label>体重の初期値 (kg)</label>
             <input type="number" step="0.1" id="user-weight" placeholder="例: 65.5">
-            <p style="font-size:0.75rem; color:var(--text-sub); margin-top:2px;">※日々の体重は「記録」タブで入力できます。</p>
+            <p style="font-size:0.75rem; color:var(--text-sub); margin-top:2px;">※カロリー計算の基準になります。</p>
             
             <label>月間目標 (ジムに行く回数)</label>
             <input type="number" id="user-goal" placeholder="例: 20">
@@ -220,21 +216,18 @@
     const defaultWeightMachines = Object.keys(weightKcalPerSet);
     const defaultCardioMachines = Object.keys(cardioMets);
 
-    // データ構造のアップデート (weightsオブジェクトを追加)
     let db = JSON.parse(localStorage.getItem('gymLogProData')) || { logs: [], settings: { weight: 65, goal: 20 } };
-    if(!db.weights) db.weights = {}; // 古いデータへの互換性対応
+    if(!db.weights) db.weights = {}; 
     if(!db.settings.goal) db.settings.goal = 20;
 
     let currentLogType = 'weight'; 
     let myHistoryChart = null; 
     let myMixedChart = null; 
 
-    // 起動時の初期化
+    // ★ 初期化
     const todayStr = new Date().toLocaleDateString('sv-SE');
     document.getElementById('log-date').value = todayStr;
-    
-    // 今日の体重が既に登録されていれば表示、なければ設定の基本体重を表示
-    document.getElementById('log-weight').value = db.weights[todayStr] || db.settings.weight;
+    syncDateData(); // 日付変更時の処理を初期化時にも実行
 
     let lastLoggedDate = todayStr;
     if (db.logs.length > 0) {
@@ -246,6 +239,36 @@
     updateMachineDatalists();
     loadSettings();
     addSetField(); 
+
+    // ★ 日付が変更されたときに体重の入力欄を更新する
+    function syncDateData() {
+        const date = document.getElementById('log-date').value;
+        const weightInput = document.getElementById('log-weight');
+        
+        // その日の体重データがあれば表示、なければ空にする
+        weightInput.value = db.weights[date] || '';
+        
+        // プレースホルダー（ヒント）として最新の体重を表示
+        const dates = Object.keys(db.weights).sort();
+        const latestDate = dates.length > 0 ? dates[dates.length - 1] : null;
+        const latestWeight = latestDate ? db.weights[latestDate] : db.settings.weight;
+        weightInput.placeholder = `前回: ${latestWeight} kg (空欄で未記録)`;
+    }
+
+    // ★ セレクトボックスの選択処理
+    function handleMachineSelect(type) {
+        const selectVal = document.getElementById(`machine-select-${type}`).value;
+        const customInput = document.getElementById(`machine-custom-${type}`);
+        
+        if (selectVal === '_new') {
+            customInput.classList.remove('hidden');
+            customInput.value = '';
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+            if(type === 'weight' && selectVal !== '') autoFillPreviousSets(selectVal);
+        }
+    }
 
     // タブ制御
     function showTab(tabId) {
@@ -261,7 +284,7 @@
         }
     }
 
-    // 月間サマリーの表示切替
+    // サマリー切替
     function setSummaryView(view) {
         document.getElementById('btn-view-cal').classList.remove('active');
         document.getElementById('btn-view-prog').classList.remove('active');
@@ -310,13 +333,11 @@
         container.appendChild(div);
     }
 
-    function autoFillPreviousSets() {
-        if(currentLogType !== 'weight') return;
-        const machine = document.getElementById('machine-name-weight').value;
+    function autoFillPreviousSets(machineName) {
         const msg = document.getElementById('auto-fill-msg');
         msg.style.display = 'none';
 
-        const pastLogs = db.logs.filter(l => (l.type === 'weight' || !l.type) && l.machine === machine);
+        const pastLogs = db.logs.filter(l => (l.type === 'weight' || !l.type) && l.machine === machineName);
         if (pastLogs.length > 0) {
             const lastSets = pastLogs[pastLogs.length - 1].sets;
             const container = document.getElementById('sets-container');
@@ -327,21 +348,23 @@
         } else if (document.getElementById('sets-container').children.length === 0) { addSetField(); }
     }
 
-    // 保存処理 (体重の保存を追加)
+    // 保存処理
     function saveLog() {
         const date = document.getElementById('log-date').value;
         const weightInput = document.getElementById('log-weight').value;
         
-        // 体重の保存
+        // 体重の入力があれば保存（空欄なら保存しない・更新しない）
         if(weightInput) {
             db.weights[date] = parseFloat(weightInput);
         }
 
-        // メニューの保存処理
-        const machineW = document.getElementById('machine-name-weight').value;
-        const machineC = document.getElementById('machine-name-cardio').value;
+        // 選択されたマシン名を取得（新規入力ならテキストボックスの値）
+        let machineW = document.getElementById('machine-select-weight').value;
+        if(machineW === '_new') machineW = document.getElementById('machine-custom-weight').value;
         
-        // メニュー入力がある場合のみログを追加
+        let machineC = document.getElementById('machine-select-cardio').value;
+        if(machineC === '_new') machineC = document.getElementById('machine-custom-cardio').value;
+        
         if ((currentLogType === 'weight' && machineW) || (currentLogType === 'cardio' && machineC)) {
             let newLog = { id: Date.now(), date: date, type: currentLogType };
 
@@ -369,7 +392,6 @@
                 db.logs.push(newLog);
             }
         } else if (!weightInput) {
-            // メニューも体重も入力されていない場合
             return alert("メニューまたは体重を入力してください");
         }
 
@@ -380,8 +402,13 @@
         const originalText = btn.innerHTML;
         btn.innerHTML = "✓ 保存完了！";
         btn.style.background = "#ffffff";
+        
+        // フォームのリセット
         if(currentLogType === 'cardio') document.getElementById('cardio-duration').value = ''; 
+        if(document.getElementById('machine-select-weight').value === '_new') document.getElementById('machine-custom-weight').value = '';
+        
         setTimeout(() => { btn.innerHTML = originalText; btn.style.background = "var(--primary-color)"; }, 1500);
+        syncDateData(); // プレースホルダー等の更新
 
         document.getElementById('stats-date').value = date;
         if(!document.getElementById('tab-stats').classList.contains('hidden')) {
@@ -391,19 +418,30 @@
         }
     }
 
+    // ★ セレクトボックスの中身を作る処理
     function updateMachineDatalists() {
-        const wList = document.getElementById('machine-list-weight');
+        const wSelect = document.getElementById('machine-select-weight');
         const loggedW = db.logs.filter(l => l.type === 'weight' || !l.type).map(l => l.machine);
-        wList.innerHTML = [...new Set([...defaultWeightMachines, ...loggedW])].map(m => `<option value="${m}">`).join('');
+        const wOptions = [...new Set([...defaultWeightMachines, ...loggedW])];
+        wSelect.innerHTML = '<option value="">▼ 選択してください</option>' + 
+                            wOptions.map(m => `<option value="${m}">${m}</option>`).join('') + 
+                            '<option value="_new">➕ 新しく入力する...</option>';
 
-        const cList = document.getElementById('machine-list-cardio');
+        const cSelect = document.getElementById('machine-select-cardio');
         const loggedC = db.logs.filter(l => l.type === 'cardio').map(l => l.machine);
-        cList.innerHTML = [...new Set([...defaultCardioMachines, ...loggedC])].map(m => `<option value="${m}">`).join('');
+        const cOptions = [...new Set([...defaultCardioMachines, ...loggedC])];
+        cSelect.innerHTML = '<option value="">▼ 選択してください</option>' + 
+                            cOptions.map(m => `<option value="${m}">${m}</option>`).join('') + 
+                            '<option value="_new">➕ 新しく入力する...</option>';
+                            
+        // カスタム入力欄を隠す
+        document.getElementById('machine-custom-weight').classList.add('hidden');
+        document.getElementById('machine-custom-cardio').classList.add('hidden');
     }
 
     function calcCalories(log) {
         if (log.type === 'cardio') {
-            const uWeight = db.weights[log.date] || db.settings.weight || 65; // その日の体重を優先
+            const uWeight = db.weights[log.date] || db.settings.weight || 65; 
             const mets = cardioMets[log.machine] || 7.0; 
             return mets * uWeight * (log.duration / 60) * 1.05;
         } else {
@@ -414,7 +452,6 @@
         }
     }
 
-    // ★ 新機能：月間サマリーの描画 (カレンダー & プログレス)
     function renderMonthlySummary() {
         const targetDateStr = document.getElementById('stats-date').value;
         if(!targetDateStr) return;
@@ -424,14 +461,12 @@
         
         document.getElementById('summary-month-title').innerText = `${year}年${month}月 の記録`;
 
-        // 対象月のユニークな来館日を抽出
         const prefix = `${year}-${month.toString().padStart(2, '0')}`;
         const daysVisited = new Set(db.logs.filter(l => l.date.startsWith(prefix)).map(l => l.date));
         const count = daysVisited.size;
         
         document.getElementById('summary-workout-days').innerHTML = `${count} <span>日</span>`;
 
-        // 1. カレンダーの生成
         const daysInMonth = new Date(year, month, 0).getDate();
         let calHtml = '';
         for(let i = 1; i <= daysInMonth; i++) {
@@ -441,17 +476,13 @@
         }
         document.getElementById('view-calendar').innerHTML = calHtml;
 
-        // 2. プログレスバーの更新
         const goal = db.settings.goal || 20;
         document.getElementById('summary-goal-text').innerText = goal;
         
         let percent = (count / goal) * 100;
         if(percent > 100) percent = 100;
         
-        // 少し遅らせてバーが伸びるアニメーション
-        setTimeout(() => {
-            document.getElementById('summary-progress-bar').style.width = `${percent}%`;
-        }, 100);
+        setTimeout(() => { document.getElementById('summary-progress-bar').style.width = `${percent}%`; }, 100);
 
         const msgEl = document.getElementById('summary-progress-msg');
         if(count >= goal) {
@@ -463,9 +494,8 @@
         }
     }
 
-    // ★ アップデート：カロリー＆体重の複合グラフ
+    // カロリー＆体重推移
     function renderMixedChart() {
-        // すべての日付（ログがある日 ＋ 体重記録がある日）を抽出
         const allDatesSet = new Set([...db.logs.map(l => l.date), ...Object.keys(db.weights)]);
         const sortedDates = Array.from(allDatesSet).sort((a,b) => new Date(a) - new Date(b));
 
@@ -475,13 +505,12 @@
         const weightData = [];
 
         sortedDates.forEach(d => {
-            // カロリー計算
             const dayLogs = db.logs.filter(l => l.date === d);
             let dayCal = 0;
             dayLogs.forEach(log => dayCal += calcCalories(log));
             calData.push(Math.round(dayCal));
 
-            // 体重データの取得 (未入力の日はnullにして線を途切れさせない設定も可能だが、今回はnullとする)
+            // 未入力の日は null にし、グラフ上で線を補完させる
             weightData.push(db.weights[d] || null);
         });
 
@@ -497,43 +526,24 @@
                 labels: shortDates,
                 datasets: [
                     {
-                        type: 'line',
-                        label: '体重 (kg)',
-                        data: weightData,
-                        borderColor: '#bd93f9',
-                        backgroundColor: '#bd93f9',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        yAxisID: 'y1',
-                        spanGaps: true // データがない日は線を繋ぐ
+                        type: 'line', label: '体重 (kg)', data: weightData,
+                        borderColor: '#bd93f9', backgroundColor: '#bd93f9',
+                        borderWidth: 2, pointRadius: 4, yAxisID: 'y1', spanGaps: true
                     },
                     {
-                        type: 'bar',
-                        label: '消費カロリー (kcal)',
-                        data: calData,
-                        backgroundColor: 'rgba(255, 184, 108, 0.7)',
-                        borderColor: '#ffb86c',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                        yAxisID: 'y',
+                        type: 'bar', label: '消費カロリー (kcal)', data: calData,
+                        backgroundColor: 'rgba(255, 184, 108, 0.7)', borderColor: '#ffb86c',
+                        borderWidth: 1, borderRadius: 4, yAxisID: 'y',
                     }
                 ]
             },
             options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
+                responsive: true, interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: { grid: { display: false } },
-                    y: { 
-                        type: 'linear', display: true, position: 'left',
-                        title: { display: true, text: 'kcal', color: '#ffb86c' },
-                        grid: { color: '#333' }
-                    },
+                    y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'kcal', color: '#ffb86c' }, grid: { color: '#333' } },
                     y1: { 
-                        type: 'linear', display: true, position: 'right',
-                        title: { display: true, text: 'kg', color: '#bd93f9' },
-                        grid: { drawOnChartArea: false }, // グリッド線が被らないように
-                        // 体重の変化を見やすくするため、最小・最大値を調整
+                        type: 'linear', display: true, position: 'right', title: { display: true, text: 'kg', color: '#bd93f9' }, grid: { drawOnChartArea: false },
                         min: Math.min(...weightData.filter(v => v !== null)) - 2,
                         max: Math.max(...weightData.filter(v => v !== null)) + 2
                     }
@@ -541,9 +551,8 @@
                 plugins: { legend: { display: true, position: 'bottom' } },
                 onClick: (e, activeElements) => {
                     if (activeElements.length > 0) {
-                        const index = activeElements[0].index;
-                        document.getElementById('stats-date').value = sortedDates[index];
-                        renderMonthlySummary(); // 月も切り替わる可能性があるため更新
+                        document.getElementById('stats-date').value = sortedDates[activeElements[0].index];
+                        renderMonthlySummary(); 
                         updateDailyStats();
                         document.getElementById('daily-report-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
@@ -607,7 +616,6 @@
         }
     }
 
-    // マシンごとの推移グラフ
     function renderHistoryChart(machineName, type) {
         const container = document.getElementById('chart-container');
         const titleEl = document.getElementById('chart-title');
@@ -642,35 +650,19 @@
 
         myHistoryChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{ 
-                    label: yLabel, data: data, 
-                    borderColor: lineColor, backgroundColor: bgColor,
-                    borderWidth: 3, pointBackgroundColor: '#1e1e1e', pointBorderColor: lineColor,
-                    pointRadius: 5, fill: true, tension: 0.3 
-                }]
-            },
-            options: {
-                scales: {
-                    y: { grid: { color: '#333' }, title: { display: true, text: yLabel, color: '#a0a0a0' } },
-                    x: { grid: { display: false } }
-                },
-                plugins: { legend: { display: false } }
-            }
+            data: { labels: labels, datasets: [{ label: yLabel, data: data, borderColor: lineColor, backgroundColor: bgColor, borderWidth: 3, pointBackgroundColor: '#1e1e1e', pointBorderColor: lineColor, pointRadius: 5, fill: true, tension: 0.3 }] },
+            options: { scales: { y: { grid: { color: '#333' }, title: { display: true, text: yLabel, color: '#a0a0a0' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
         });
-
         setTimeout(() => { container.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
     }
 
     function saveSettings() {
         db.settings.weight = parseFloat(document.getElementById('user-weight').value) || 65;
         db.settings.goal = parseInt(document.getElementById('user-goal').value) || 20;
-        // 日付入力欄の値が存在すれば、初期体重として今日のデータにも反映する
-        if(!db.weights[todayStr]) db.weights[todayStr] = db.settings.weight;
-        
+        // バグ回避: 設定から勝手にその日の体重に上書きする処理を削除しました。
         localStorage.setItem('gymLogProData', JSON.stringify(db));
         alert("設定を保存しました。");
+        syncDateData();
         if(!document.getElementById('tab-stats').classList.contains('hidden')) {
             renderMonthlySummary();
             renderMixedChart(); 
