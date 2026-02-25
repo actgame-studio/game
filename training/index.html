@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GymLog Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212; --surface-color: #1e1e1e;
+            --primary-color: #00ff88; --secondary-color: #00b8ff;
+            --accent-color: #ffb86c; --weight-color: #bd93f9;
+            --text-main: #ffffff; --text-sub: #a0a0a0;
+            --border-color: #333333; --danger-color: #ff4d4d;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; padding-bottom: 50px;}
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        .card { background: var(--surface-color); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
+        h2 { font-size: 1.2rem; margin-top: 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        h3 { font-size: 1rem; color: var(--primary-color); margin-top: 0; margin-bottom: 10px;}
+        label { font-size: 0.85rem; color: var(--text-sub); display: block; margin-bottom: 5px; margin-top: 15px; }
+        input, select { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 1rem; box-sizing: border-box; outline: none; }
+        input:focus, select:focus { border-color: var(--primary-color); }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--primary-color); color: #000; box-shadow: 0 4px 10px rgba(0, 255, 136, 0.3); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary { background: transparent; border: 1px solid var(--text-sub); color: var(--text-main); }
+        
+        .type-toggle { display: flex; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 4px; margin-bottom: 15px; }
+        .type-toggle button { flex: 1; padding: 10px; background: transparent; color: var(--text-sub); border-radius: 6px; font-size: 0.9rem; }
+        .type-toggle button.active.weight { background: var(--primary-color); color: #000; }
+        .type-toggle button.active.cardio { background: var(--secondary-color); color: #000; }
+
+        .set-row { display: grid; grid-template-columns: 2fr 1.2fr 1.5fr 30px; gap: 8px; align-items: center; margin-bottom: 12px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; }
+        .input-group { position: relative; }
+        .input-group span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-sub); font-size: 0.8rem; pointer-events: none; }
+        .set-row input, .duration-row input { padding-right: 25px; }
+        .delete-btn { background: transparent; color: var(--danger-color); font-size: 1.2rem; padding: 0; }
+
+        .tab-menu { display: flex; gap: 10px; margin-bottom: 20px; background: var(--surface-color); padding: 5px; border-radius: 10px; }
+        .tab-btn { flex: 1; background: transparent; color: var(--text-sub); padding: 10px; border-radius: 8px; font-size: 0.9rem; }
+        .tab-btn.active { background: rgba(255,255,255,0.1); color: var(--primary-color); font-weight: bold; }
+        .hidden { display: none !important; }
+
+        .stats-box { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; margin-top: 15px; margin-bottom: 20px;}
+        .stats-val { font-size: 1.8rem; font-weight: bold; color: var(--text-main); }
+        .daily-log-item { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .daily-log-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 8px;}
+        .daily-log-machine { font-weight: bold; font-size: 1.1rem; color: var(--primary-color); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+        .daily-log-machine.cardio { color: var(--secondary-color); }
+        .log-cal { font-size: 0.85rem; color: var(--accent-color); font-weight: bold; margin-right: auto; margin-left: 10px; }
+        .daily-log-sets { font-size: 0.9rem; color: var(--text-sub); line-height: 1.6;}
+        .log-delete-btn { background: rgba(255, 77, 77, 0.1); color: var(--danger-color); border: 1px solid var(--danger-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; width: auto; }
+        .empty-msg { text-align: center; color: var(--text-sub); padding: 20px 0; font-size: 0.9rem;}
+        
+        .hint-text { font-size: 0.75rem; color: var(--text-sub); text-align: center; margin-top: 5px; }
+
+        /* 月間サマリー用スタイル */
+        .summary-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+        .summary-title { font-size: 1.1rem; font-weight: bold; color: var(--text-main); }
+        .summary-count { font-size: 1.8rem; font-weight: bold; color: var(--primary-color); }
+        .summary-count span { font-size: 0.9rem; color: var(--text-sub); font-weight: normal; }
+        
+        /* カレンダーグリッド */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+        .cal-day { aspect-ratio: 1; border-radius: 4px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #555; }
+        .cal-day.active { background: var(--primary-color); color: #000; font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
+        
+        /* プログレスバー */
+        .progress-bg { background: rgba(255,255,255,0.1); border-radius: 10px; height: 20px; width: 100%; overflow: hidden; margin-top: 15px; }
+        .progress-fill { background: linear-gradient(90deg, #00b8ff, #00ff88); height: 100%; width: 0%; transition: width 0.5s ease-in-out; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="showTab('log')">✍️ 記録</button>
+        <button class="tab-btn" onclick="showTab('stats')">📊 分析</button>
+        <button class="tab-btn" onclick="showTab('settings')">⚙️ 設定</button>
+    </div>
+
+    <div id="tab-log" class="tab-content">
+        <div class="card">
+            <h2>トレーニング記録</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div>
+                    <label style="margin-top: 0;">日付</label>
+                    <input type="date" id="log-date">
+                </div>
+                <div>
+                    <label style="margin-top: 0;">本日の体重 (kg)</label>
+                    <input type="number" step="0.1" id="log-weight" placeholder="例: 65.5">
+                </div>
+            </div>
+            
+            <div class="type-toggle">
+                <button id="btn-type-weight" class="active weight" onclick="setLogType('weight')">🏋️ ウェイト</button>
+                <button id="btn-type-cardio" class="cardio" onclick="setLogType('cardio')">🏃 有酸素</button>
+            </div>
+            
+            <div id="area-weight">
+                <label>マシン名 (リストから選択 or 新規入力)</label>
+                <input type="text" id="machine-name-weight" list="machine-list-weight" placeholder="タップして選択..." onchange="autoFillPreviousSets()" onclick="this.value=''">
+                <datalist id="machine-list-weight"></datalist>
+                <div id="auto-fill-msg" style="color: var(--primary-color); font-size: 0.8rem; margin-top: 5px; display: none;">✓ 前回のセット内容を自動入力しました</div>
+                
+                <div style="margin-top: 25px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--text-main);">セット詳細</h3>
+                    <div id="sets-container"></div>
+                    <button class="btn-secondary" onclick="addSetField()" style="margin-top: 10px;">＋ セット追加</button>
+                </div>
+            </div>
+
+            <div id="area-cardio" class="hidden">
+                <label>有酸素メニュー (リストから選択 or 新規入力)</label>
+                <input type="text" id="machine-name-cardio" list="machine-list-cardio" placeholder="タップして選択..." onclick="this.value=''">
+                <datalist id="machine-list-cardio"></datalist>
+
+                <label style="margin-top: 15px;">実施時間</label>
+                <div class="input-group duration-row">
+                    <input type="number" id="cardio-duration" placeholder="時間">
+                    <span>分</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button class="btn-primary" onclick="saveLog()">💾 保存する</button>
+                <p style="font-size:0.75rem; color:var(--text-sub); text-align:center; margin-top:10px;">※体重のみ入力して保存することも可能です</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-stats" class="tab-content hidden">
+        <div class="card">
+            <div class="type-toggle" style="margin-bottom: 10px;">
+                <button id="btn-view-cal" class="active weight" onclick="setSummaryView('calendar')">📅 カレンダー</button>
+                <button id="btn-view-prog" class="weight" onclick="setSummaryView('progress')">🎯 目標達成度</button>
+            </div>
+
+            <div class="summary-header">
+                <div class="summary-title" id="summary-month-title">2026年2月 の記録</div>
+                <div class="summary-count" id="summary-workout-days">0 <span>日</span></div>
+            </div>
+
+            <div id="view-calendar" class="calendar-grid">
+                </div>
+
+            <div id="view-progress" class="hidden">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-sub);">
+                    <span>0回</span>
+                    <span>目標: <span id="summary-goal-text">20</span>回</span>
+                </div>
+                <div class="progress-bg">
+                    <div class="progress-fill" id="summary-progress-bar"></div>
+                </div>
+                <div style="text-align: center; margin-top: 10px; font-weight: bold; color: var(--primary-color);" id="summary-progress-msg"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="color: var(--accent-color);">🔥 カロリー & 体重 推移</h2>
+            <div style="margin-bottom: 10px; cursor: pointer;">
+                <canvas id="mixedChart"></canvas>
+            </div>
+            <div class="hint-text">👆 グラフの棒をタップすると、その日のメニューを確認できます</div>
+        </div>
+
+        <div class="card" id="daily-report-section">
+            <h2>📝 日別レポート</h2>
+            <label>日付を選択してデータを確認</label>
+            <input type="date" id="stats-date" onchange="updateDailyStats()">
+            
+            <div class="stats-box">
+                <div style="font-size: 0.85rem; color: var(--text-sub);">この日の総消費カロリー</div>
+                <div class="stats-val"><span id="daily-total-calories">0</span> kcal</div>
+            </div>
+
+            <h3>実施したメニュー <span style="font-size: 0.75rem; color: var(--text-sub); font-weight: normal;">(タップで推移を表示)</span></h3>
+            <div id="daily-logs-container"></div>
+
+            <div id="chart-container" class="hidden">
+                <h3 id="chart-title" style="text-align: center; margin-bottom: 10px;">-</h3>
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-settings" class="tab-content hidden">
+        <div class="card">
+            <h2>ユーザー設定</h2>
+            <label>体重の初期値 (kg)</label>
+            <input type="number" step="0.1" id="user-weight" placeholder="例: 65.5">
+            <p style="font-size:0.75rem; color:var(--text-sub); margin-top:2px;">※日々の体重は「記録」タブで入力できます。</p>
+            
+            <label>月間目標 (ジムに行く回数)</label>
+            <input type="number" id="user-goal" placeholder="例: 20">
+            
+            <button class="btn-primary" onclick="saveSettings()" style="margin-top: 20px;">設定を保存</button>
+            <button class="btn-secondary" onclick="exportData()" style="margin-top: 15px;">データのバックアップ (JSON)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const weightKcalPerSet = {
+        "レッグプレス": 8, "レッグエクステンション": 5, "レッグカール": 5,
+        "アダクション": 4, "アブダクション": 4, "バーティカルチェストプレス": 6,
+        "オーバーヘッドプレス": 6, "ペックフライ": 4, "プルオーバー": 5,
+        "ラットプルダウン": 6, "ミッドロウ": 6, "リアデルト": 4,
+        "ロウバック": 5, "アブドミナル": 4
+    };
+
+    const cardioMets = {
+        "トレッドミル（ウォーキング）": 4.3, "AMT（エアロビックプラス）": 8.0,
+        "X55": 8.5, "3on3バスケ": 8.0, "トレッドミル（ランニング）": 9.0,
+        "エアロバイク": 7.0, "クロストレーナー": 8.0, "ステアマスター": 9.0
+    };
+
+    const defaultWeightMachines = Object.keys(weightKcalPerSet);
+    const defaultCardioMachines = Object.keys(cardioMets);
+
+    // データ構造のアップデート (weightsオブジェクトを追加)
+    let db = JSON.parse(localStorage.getItem('gymLogProData')) || { logs: [], settings: { weight: 65, goal: 20 } };
+    if(!db.weights) db.weights = {}; // 古いデータへの互換性対応
+    if(!db.settings.goal) db.settings.goal = 20;
+
+    let currentLogType = 'weight'; 
+    let myHistoryChart = null; 
+    let myMixedChart = null; 
+
+    // 起動時の初期化
+    const todayStr = new Date().toLocaleDateString('sv-SE');
+    document.getElementById('log-date').value = todayStr;
+    
+    // 今日の体重が既に登録されていれば表示、なければ設定の基本体重を表示
+    document.getElementById('log-weight').value = db.weights[todayStr] || db.settings.weight;
+
+    let lastLoggedDate = todayStr;
+    if (db.logs.length > 0) {
+        const sortedLogs = [...db.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
+        lastLoggedDate = sortedLogs[0].date;
+    }
+    document.getElementById('stats-date').value = lastLoggedDate;
+    
+    updateMachineDatalists();
+    loadSettings();
+    addSetField(); 
+
+    // タブ制御
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+        if(tabId === 'stats') {
+            document.getElementById('chart-container').classList.add('hidden');
+            renderMonthlySummary();
+            renderMixedChart(); 
+            updateDailyStats(); 
+        }
+    }
+
+    // 月間サマリーの表示切替
+    function setSummaryView(view) {
+        document.getElementById('btn-view-cal').classList.remove('active');
+        document.getElementById('btn-view-prog').classList.remove('active');
+        if(view === 'calendar') {
+            document.getElementById('btn-view-cal').classList.add('active');
+            document.getElementById('view-calendar').classList.remove('hidden');
+            document.getElementById('view-progress').classList.add('hidden');
+        } else {
+            document.getElementById('btn-view-prog').classList.add('active');
+            document.getElementById('view-calendar').classList.add('hidden');
+            document.getElementById('view-progress').classList.remove('hidden');
+        }
+    }
+
+    function setLogType(type) {
+        currentLogType = type;
+        document.getElementById('btn-type-weight').classList.remove('active');
+        document.getElementById('btn-type-cardio').classList.remove('active');
+        document.getElementById(`btn-type-${type}`).classList.add('active');
+        
+        if(type === 'weight') {
+            document.getElementById('area-weight').classList.remove('hidden');
+            document.getElementById('area-cardio').classList.add('hidden');
+        } else {
+            document.getElementById('area-weight').classList.add('hidden');
+            document.getElementById('area-cardio').classList.remove('hidden');
+        }
+    }
+
+    function addSetField(weight = '', reps = '', setsCount = '1') {
+        const container = document.getElementById('sets-container');
+        if (weight === '' && container.children.length > 0) {
+            const lastRow = container.lastElementChild;
+            weight = lastRow.querySelector('.set-weight').value;
+            reps = lastRow.querySelector('.set-reps').value;
+            setsCount = '1';
+        }
+        const div = document.createElement('div');
+        div.className = 'set-row';
+        div.innerHTML = `
+            <div class="input-group"><input type="number" step="0.5" placeholder="重さ" class="set-weight" value="${weight}"><span>lb</span></div>
+            <div class="input-group"><input type="number" placeholder="回数" class="set-reps" value="${reps}"><span>回</span></div>
+            <div class="input-group"><input type="number" placeholder="セット" class="set-count" value="${setsCount}"><span>s</span></div>
+            <button class="delete-btn" onclick="this.parentElement.remove()">×</button>
+        `;
+        container.appendChild(div);
+    }
+
+    function autoFillPreviousSets() {
+        if(currentLogType !== 'weight') return;
+        const machine = document.getElementById('machine-name-weight').value;
+        const msg = document.getElementById('auto-fill-msg');
+        msg.style.display = 'none';
+
+        const pastLogs = db.logs.filter(l => (l.type === 'weight' || !l.type) && l.machine === machine);
+        if (pastLogs.length > 0) {
+            const lastSets = pastLogs[pastLogs.length - 1].sets;
+            const container = document.getElementById('sets-container');
+            container.innerHTML = ''; 
+            lastSets.forEach(set => addSetField(set.weight, set.reps, set.setsCount || 1));
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 3000);
+        } else if (document.getElementById('sets-container').children.length === 0) { addSetField(); }
+    }
+
+    // 保存処理 (体重の保存を追加)
+    function saveLog() {
+        const date = document.getElementById('log-date').value;
+        const weightInput = document.getElementById('log-weight').value;
+        
+        // 体重の保存
+        if(weightInput) {
+            db.weights[date] = parseFloat(weightInput);
+        }
+
+        // メニューの保存処理
+        const machineW = document.getElementById('machine-name-weight').value;
+        const machineC = document.getElementById('machine-name-cardio').value;
+        
+        // メニュー入力がある場合のみログを追加
+        if ((currentLogType === 'weight' && machineW) || (currentLogType === 'cardio' && machineC)) {
+            let newLog = { id: Date.now(), date: date, type: currentLogType };
+
+            if (currentLogType === 'weight') {
+                let sets = [];
+                const wInputs = document.querySelectorAll('.set-weight');
+                const rInputs = document.querySelectorAll('.set-reps');
+                const cInputs = document.querySelectorAll('.set-count');
+                
+                wInputs.forEach((w, i) => {
+                    if(w.value && rInputs[i].value && cInputs[i].value) {
+                        sets.push({ weight: parseFloat(w.value), reps: parseInt(rInputs[i].value), setsCount: parseInt(cInputs[i].value) });
+                    }
+                });
+                if(sets.length === 0) return alert("セット内容を入力してください");
+                newLog.machine = machineW;
+                newLog.sets = sets;
+                db.logs.push(newLog);
+
+            } else if (currentLogType === 'cardio') {
+                const duration = document.getElementById('cardio-duration').value;
+                if(!duration) return alert("実施時間を入力してください");
+                newLog.machine = machineC;
+                newLog.duration = parseInt(duration);
+                db.logs.push(newLog);
+            }
+        } else if (!weightInput) {
+            // メニューも体重も入力されていない場合
+            return alert("メニューまたは体重を入力してください");
+        }
+
+        localStorage.setItem('gymLogProData', JSON.stringify(db));
+        updateMachineDatalists();
+        
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "✓ 保存完了！";
+        btn.style.background = "#ffffff";
+        if(currentLogType === 'cardio') document.getElementById('cardio-duration').value = ''; 
+        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = "var(--primary-color)"; }, 1500);
+
+        document.getElementById('stats-date').value = date;
+        if(!document.getElementById('tab-stats').classList.contains('hidden')) {
+            renderMonthlySummary();
+            renderMixedChart();
+            updateDailyStats();
+        }
+    }
+
+    function updateMachineDatalists() {
+        const wList = document.getElementById('machine-list-weight');
+        const loggedW = db.logs.filter(l => l.type === 'weight' || !l.type).map(l => l.machine);
+        wList.innerHTML = [...new Set([...defaultWeightMachines, ...loggedW])].map(m => `<option value="${m}">`).join('');
+
+        const cList = document.getElementById('machine-list-cardio');
+        const loggedC = db.logs.filter(l => l.type === 'cardio').map(l => l.machine);
+        cList.innerHTML = [...new Set([...defaultCardioMachines, ...loggedC])].map(m => `<option value="${m}">`).join('');
+    }
+
+    function calcCalories(log) {
+        if (log.type === 'cardio') {
+            const uWeight = db.weights[log.date] || db.settings.weight || 65; // その日の体重を優先
+            const mets = cardioMets[log.machine] || 7.0; 
+            return mets * uWeight * (log.duration / 60) * 1.05;
+        } else {
+            const kcalPerSet = weightKcalPerSet[log.machine] || 5; 
+            let totalSets = 0;
+            if(log.sets) log.sets.forEach(s => totalSets += (s.setsCount || 1));
+            return totalSets * kcalPerSet;
+        }
+    }
+
+    // ★ 新機能：月間サマリーの描画 (カレンダー & プログレス)
+    function renderMonthlySummary() {
+        const targetDateStr = document.getElementById('stats-date').value;
+        if(!targetDateStr) return;
+        const targetDate = new Date(targetDateStr);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth() + 1;
+        
+        document.getElementById('summary-month-title').innerText = `${year}年${month}月 の記録`;
+
+        // 対象月のユニークな来館日を抽出
+        const prefix = `${year}-${month.toString().padStart(2, '0')}`;
+        const daysVisited = new Set(db.logs.filter(l => l.date.startsWith(prefix)).map(l => l.date));
+        const count = daysVisited.size;
+        
+        document.getElementById('summary-workout-days').innerHTML = `${count} <span>日</span>`;
+
+        // 1. カレンダーの生成
+        const daysInMonth = new Date(year, month, 0).getDate();
+        let calHtml = '';
+        for(let i = 1; i <= daysInMonth; i++) {
+            const dStr = `${prefix}-${i.toString().padStart(2, '0')}`;
+            const isActive = daysVisited.has(dStr) ? 'active' : '';
+            calHtml += `<div class="cal-day ${isActive}">${i}</div>`;
+        }
+        document.getElementById('view-calendar').innerHTML = calHtml;
+
+        // 2. プログレスバーの更新
+        const goal = db.settings.goal || 20;
+        document.getElementById('summary-goal-text').innerText = goal;
+        
+        let percent = (count / goal) * 100;
+        if(percent > 100) percent = 100;
+        
+        // 少し遅らせてバーが伸びるアニメーション
+        setTimeout(() => {
+            document.getElementById('summary-progress-bar').style.width = `${percent}%`;
+        }, 100);
+
+        const msgEl = document.getElementById('summary-progress-msg');
+        if(count >= goal) {
+            msgEl.innerText = "🎉 今月の目標達成！素晴らしいペースです！";
+            msgEl.style.color = "#ffb86c";
+        } else {
+            msgEl.innerText = `目標まであと ${goal - count} 回！`;
+            msgEl.style.color = "var(--primary-color)";
+        }
+    }
+
+    // ★ アップデート：カロリー＆体重の複合グラフ
+    function renderMixedChart() {
+        // すべての日付（ログがある日 ＋ 体重記録がある日）を抽出
+        const allDatesSet = new Set([...db.logs.map(l => l.date), ...Object.keys(db.weights)]);
+        const sortedDates = Array.from(allDatesSet).sort((a,b) => new Date(a) - new Date(b));
+
+        if (sortedDates.length === 0) return;
+
+        const calData = [];
+        const weightData = [];
+
+        sortedDates.forEach(d => {
+            // カロリー計算
+            const dayLogs = db.logs.filter(l => l.date === d);
+            let dayCal = 0;
+            dayLogs.forEach(log => dayCal += calcCalories(log));
+            calData.push(Math.round(dayCal));
+
+            // 体重データの取得 (未入力の日はnullにして線を途切れさせない設定も可能だが、今回はnullとする)
+            weightData.push(db.weights[d] || null);
+        });
+
+        const shortDates = sortedDates.map(d => `${d.split('-')[1]}/${d.split('-')[2]}`);
+
+        const ctx = document.getElementById('mixedChart').getContext('2d');
+        if(myMixedChart) myMixedChart.destroy();
+        
+        Chart.defaults.color = '#a0a0a0';
+        myMixedChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: shortDates,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: '体重 (kg)',
+                        data: weightData,
+                        borderColor: '#bd93f9',
+                        backgroundColor: '#bd93f9',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        yAxisID: 'y1',
+                        spanGaps: true // データがない日は線を繋ぐ
+                    },
+                    {
+                        type: 'bar',
+                        label: '消費カロリー (kcal)',
+                        data: calData,
+                        backgroundColor: 'rgba(255, 184, 108, 0.7)',
+                        borderColor: '#ffb86c',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'y',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { 
+                        type: 'linear', display: true, position: 'left',
+                        title: { display: true, text: 'kcal', color: '#ffb86c' },
+                        grid: { color: '#333' }
+                    },
+                    y1: { 
+                        type: 'linear', display: true, position: 'right',
+                        title: { display: true, text: 'kg', color: '#bd93f9' },
+                        grid: { drawOnChartArea: false }, // グリッド線が被らないように
+                        // 体重の変化を見やすくするため、最小・最大値を調整
+                        min: Math.min(...weightData.filter(v => v !== null)) - 2,
+                        max: Math.max(...weightData.filter(v => v !== null)) + 2
+                    }
+                },
+                plugins: { legend: { display: true, position: 'bottom' } },
+                onClick: (e, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        document.getElementById('stats-date').value = sortedDates[index];
+                        renderMonthlySummary(); // 月も切り替わる可能性があるため更新
+                        updateDailyStats();
+                        document.getElementById('daily-report-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+        });
+    }
+
+    function updateDailyStats() {
+        const targetDate = document.getElementById('stats-date').value;
+        const dailyLogs = db.logs.filter(l => l.date === targetDate);
+        const container = document.getElementById('daily-logs-container');
+        
+        let totalCals = 0;
+        let html = '';
+
+        if(dailyLogs.length === 0) {
+            html = '<div class="empty-msg">この日のトレーニング記録はありません。<br>(体重のみ記録されている場合があります)</div>';
+        } else {
+            dailyLogs.forEach(log => {
+                const isWeight = (log.type === 'weight' || !log.type);
+                const cal = calcCalories(log);
+                totalCals += cal;
+                
+                let detailsHtml = '';
+                if(isWeight && log.sets) {
+                    log.sets.forEach(s => { detailsHtml += `<div>${s.weight} lb × ${s.reps}回 × ${s.setsCount || 1}セット</div>`; });
+                } else if(log.type === 'cardio') {
+                    detailsHtml += `<div>⏱️ ${log.duration} 分</div>`;
+                }
+
+                const machineClass = isWeight ? 'daily-log-machine' : 'daily-log-machine cardio';
+                const safeMachineStr = log.machine.replace(/'/g, "\\'"); 
+
+                html += `
+                    <div class="daily-log-item">
+                        <div class="daily-log-header">
+                            <span class="${machineClass}" onclick="renderHistoryChart('${safeMachineStr}', '${isWeight ? 'weight' : 'cardio'}')">${log.machine}</span>
+                            <span class="log-cal">${Math.round(cal)} kcal</span>
+                            <button class="log-delete-btn" onclick="deleteLog(${log.id})">削除</button>
+                        </div>
+                        <div class="daily-log-sets">${detailsHtml}</div>
+                    </div>
+                `;
+            });
+        }
+        
+        container.innerHTML = html;
+        document.getElementById('daily-total-calories').innerText = Math.round(totalCals);
+    }
+
+    function deleteLog(logId) {
+        if(confirm('この記録を削除してもよろしいですか？')) {
+            db.logs = db.logs.filter(l => l.id !== logId);
+            localStorage.setItem('gymLogProData', JSON.stringify(db));
+            renderMonthlySummary();
+            renderMixedChart();
+            updateDailyStats();
+            updateMachineDatalists();
+            document.getElementById('chart-container').classList.add('hidden'); 
+        }
+    }
+
+    // マシンごとの推移グラフ
+    function renderHistoryChart(machineName, type) {
+        const container = document.getElementById('chart-container');
+        const titleEl = document.getElementById('chart-title');
+        container.classList.remove('hidden');
+        titleEl.innerText = `📈 ${machineName} の推移`;
+        titleEl.style.color = type === 'weight' ? 'var(--primary-color)' : 'var(--secondary-color)';
+
+        const machineLogs = db.logs.filter(l => {
+            const lType = l.type || 'weight';
+            return lType === type && l.machine === machineName;
+        }).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        const aggregatedData = {};
+        machineLogs.forEach(log => {
+            if (type === 'weight') {
+                const maxW = Math.max(...log.sets.map(s => s.weight));
+                if(!aggregatedData[log.date] || aggregatedData[log.date] < maxW) { aggregatedData[log.date] = maxW; }
+            } else {
+                aggregatedData[log.date] = (aggregatedData[log.date] || 0) + log.duration;
+            }
+        });
+
+        const labels = Object.keys(aggregatedData).map(d => d.substring(5).replace('-','/'));
+        const data = Object.values(aggregatedData);
+
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        if(myHistoryChart) myHistoryChart.destroy();
+
+        const lineColor = type === 'weight' ? '#00ff88' : '#00b8ff';
+        const bgColor = type === 'weight' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(0, 184, 255, 0.1)';
+        const yLabel = type === 'weight' ? '最大重量 (lb)' : '合計時間 (分)';
+
+        myHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ 
+                    label: yLabel, data: data, 
+                    borderColor: lineColor, backgroundColor: bgColor,
+                    borderWidth: 3, pointBackgroundColor: '#1e1e1e', pointBorderColor: lineColor,
+                    pointRadius: 5, fill: true, tension: 0.3 
+                }]
+            },
+            options: {
+                scales: {
+                    y: { grid: { color: '#333' }, title: { display: true, text: yLabel, color: '#a0a0a0' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        setTimeout(() => { container.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
+    }
+
+    function saveSettings() {
+        db.settings.weight = parseFloat(document.getElementById('user-weight').value) || 65;
+        db.settings.goal = parseInt(document.getElementById('user-goal').value) || 20;
+        // 日付入力欄の値が存在すれば、初期体重として今日のデータにも反映する
+        if(!db.weights[todayStr]) db.weights[todayStr] = db.settings.weight;
+        
+        localStorage.setItem('gymLogProData', JSON.stringify(db));
+        alert("設定を保存しました。");
+        if(!document.getElementById('tab-stats').classList.contains('hidden')) {
+            renderMonthlySummary();
+            renderMixedChart(); 
+            updateDailyStats(); 
+        }
+    }
+
+    function loadSettings() {
+        document.getElementById('user-weight').value = db.settings.weight || '';
+        document.getElementById('user-goal').value = db.settings.goal || 20;
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", "gymlog_backup.json");
+        dlAnchorElem.click();
+    }
+</script>
+
+</body>
+</html>
