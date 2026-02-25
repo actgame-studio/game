@@ -15,6 +15,10 @@
         }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; padding-bottom: 50px;}
         .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        
+        /* サービスロゴ */
+        .app-logo { color: var(--primary-color); font-size: 1.2rem; font-weight: 800; font-style: italic; letter-spacing: 1px; margin-bottom: 15px; margin-top: 0;}
+
         .card { background: var(--surface-color); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); }
         h2 { font-size: 1.2rem; margin-top: 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
         h3 { font-size: 1rem; color: var(--primary-color); margin-top: 0; margin-bottom: 10px;}
@@ -63,7 +67,8 @@
         
         /* カレンダーグリッド */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-        .cal-day { aspect-ratio: 1; border-radius: 4px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #555; }
+        .cal-day { aspect-ratio: 1; border-radius: 4px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #555; cursor: pointer; transition: transform 0.1s; }
+        .cal-day:hover { transform: scale(1.05); background: rgba(255,255,255,0.1); }
         .cal-day.active { background: var(--primary-color); color: #000; font-weight: bold; box-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
         
         /* プログレスバー */
@@ -74,6 +79,8 @@
 <body>
 
 <div class="container">
+    <div class="app-logo">GymLog Pro</div>
+    
     <div class="tab-menu">
         <button class="tab-btn active" onclick="showTab('log')">✍️ 記録</button>
         <button class="tab-btn" onclick="showTab('stats')">📊 分析</button>
@@ -84,11 +91,18 @@
         <div class="card">
             <h2>トレーニング記録</h2>
             
-            <label style="margin-top: 0;">日付</label>
-            <input type="date" id="log-date" style="margin-bottom: 15px;" onchange="syncDateData()">
-            
-            <label style="margin-top: 0;">本日の体重 (kg)</label>
-            <input type="number" step="0.1" id="log-weight" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label style="margin-top: 0;">日付</label>
+                    <input type="date" id="log-date" onchange="syncDateData()">
+                </div>
+                <div style="width: 100px;"> <label style="margin-top: 0;">体重</label>
+                    <div style="position: relative;">
+                        <input type="number" step="0.1" id="log-weight" style="padding-right: 25px; text-align: center;">
+                        <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-sub); font-size: 0.8rem; pointer-events: none;">kg</span>
+                    </div>
+                </div>
+            </div>
             
             <div class="type-toggle">
                 <button id="btn-type-weight" class="active weight" onclick="setLogType('weight')">🏋️ ウェイト</button>
@@ -123,7 +137,7 @@
             
             <div style="margin-top: 30px;">
                 <button class="btn-primary" onclick="saveLog()">💾 保存する</button>
-                <p style="font-size:0.75rem; color:var(--text-sub); text-align:center; margin-top:10px;">※体重のみ入力して保存することも可能です</p>
+                <p style="font-size:0.75rem; color:var(--text-sub); text-align:center; margin-top:10px;" id="weight-hint-text">※体重のみ入力して保存することも可能です</p>
             </div>
         </div>
     </div>
@@ -141,6 +155,7 @@
             </div>
 
             <div id="view-calendar" class="calendar-grid"></div>
+            <div class="hint-text" id="cal-hint">👆 日付をタップするとレポートを見れます</div>
 
             <div id="view-progress" class="hidden">
                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-sub);">
@@ -159,7 +174,7 @@
             <div style="margin-bottom: 10px; cursor: pointer;">
                 <canvas id="mixedChart"></canvas>
             </div>
-            <div class="hint-text">👆 グラフの棒をタップすると、その日のメニューを確認できます</div>
+            <div class="hint-text">👆 グラフの棒をタップするとレポートを見れます</div>
         </div>
 
         <div class="card" id="daily-report-section">
@@ -227,7 +242,7 @@
     // ★ 初期化
     const todayStr = new Date().toLocaleDateString('sv-SE');
     document.getElementById('log-date').value = todayStr;
-    syncDateData(); // 日付変更時の処理を初期化時にも実行
+    syncDateData(); 
 
     let lastLoggedDate = todayStr;
     if (db.logs.length > 0) {
@@ -240,22 +255,21 @@
     loadSettings();
     addSetField(); 
 
-    // ★ 日付が変更されたときに体重の入力欄を更新する
     function syncDateData() {
         const date = document.getElementById('log-date').value;
         const weightInput = document.getElementById('log-weight');
         
-        // その日の体重データがあれば表示、なければ空にする
         weightInput.value = db.weights[date] || '';
         
-        // プレースホルダー（ヒント）として最新の体重を表示
         const dates = Object.keys(db.weights).sort();
         const latestDate = dates.length > 0 ? dates[dates.length - 1] : null;
         const latestWeight = latestDate ? db.weights[latestDate] : db.settings.weight;
-        weightInput.placeholder = `前回: ${latestWeight} kg (空欄で未記録)`;
+        
+        // プレースホルダーを短くし、ヒントテキストに前回体重を表示
+        weightInput.placeholder = "---";
+        document.getElementById('weight-hint-text').innerText = `※前回入力値: ${latestWeight}kg (体重のみの保存も可)`;
     }
 
-    // ★ セレクトボックスの選択処理
     function handleMachineSelect(type) {
         const selectVal = document.getElementById(`machine-select-${type}`).value;
         const customInput = document.getElementById(`machine-custom-${type}`);
@@ -270,7 +284,6 @@
         }
     }
 
-    // タブ制御
     function showTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -284,7 +297,6 @@
         }
     }
 
-    // サマリー切替
     function setSummaryView(view) {
         document.getElementById('btn-view-cal').classList.remove('active');
         document.getElementById('btn-view-prog').classList.remove('active');
@@ -292,10 +304,12 @@
             document.getElementById('btn-view-cal').classList.add('active');
             document.getElementById('view-calendar').classList.remove('hidden');
             document.getElementById('view-progress').classList.add('hidden');
+            document.getElementById('cal-hint').style.display = 'block';
         } else {
             document.getElementById('btn-view-prog').classList.add('active');
             document.getElementById('view-calendar').classList.add('hidden');
             document.getElementById('view-progress').classList.remove('hidden');
+            document.getElementById('cal-hint').style.display = 'none';
         }
     }
 
@@ -314,13 +328,15 @@
         }
     }
 
-    function addSetField(weight = '', reps = '', setsCount = '1') {
+    // ★ 初期値を空欄に変更
+    function addSetField(weight = '', reps = '', setsCount = '') {
         const container = document.getElementById('sets-container');
+        // コピー時の処理
         if (weight === '' && container.children.length > 0) {
             const lastRow = container.lastElementChild;
             weight = lastRow.querySelector('.set-weight').value;
             reps = lastRow.querySelector('.set-reps').value;
-            setsCount = '1';
+            setsCount = ''; // コピー時もセット数は空にする
         }
         const div = document.createElement('div');
         div.className = 'set-row';
@@ -342,23 +358,20 @@
             const lastSets = pastLogs[pastLogs.length - 1].sets;
             const container = document.getElementById('sets-container');
             container.innerHTML = ''; 
-            lastSets.forEach(set => addSetField(set.weight, set.reps, set.setsCount || 1));
+            lastSets.forEach(set => addSetField(set.weight, set.reps, set.setsCount || ''));
             msg.style.display = 'block';
             setTimeout(() => msg.style.display = 'none', 3000);
         } else if (document.getElementById('sets-container').children.length === 0) { addSetField(); }
     }
 
-    // 保存処理
     function saveLog() {
         const date = document.getElementById('log-date').value;
         const weightInput = document.getElementById('log-weight').value;
         
-        // 体重の入力があれば保存（空欄なら保存しない・更新しない）
         if(weightInput) {
             db.weights[date] = parseFloat(weightInput);
         }
 
-        // 選択されたマシン名を取得（新規入力ならテキストボックスの値）
         let machineW = document.getElementById('machine-select-weight').value;
         if(machineW === '_new') machineW = document.getElementById('machine-custom-weight').value;
         
@@ -375,11 +388,13 @@
                 const cInputs = document.querySelectorAll('.set-count');
                 
                 wInputs.forEach((w, i) => {
+                    // セット数が空欄の場合はエラーにせず、最低限重さと回数があれば登録させるか、入力必須にするか
+                    // 今回は入力必須アラートを出す
                     if(w.value && rInputs[i].value && cInputs[i].value) {
                         sets.push({ weight: parseFloat(w.value), reps: parseInt(rInputs[i].value), setsCount: parseInt(cInputs[i].value) });
                     }
                 });
-                if(sets.length === 0) return alert("セット内容を入力してください");
+                if(sets.length === 0) return alert("重さ・回数・セット数をすべて入力してください");
                 newLog.machine = machineW;
                 newLog.sets = sets;
                 db.logs.push(newLog);
@@ -403,12 +418,11 @@
         btn.innerHTML = "✓ 保存完了！";
         btn.style.background = "#ffffff";
         
-        // フォームのリセット
         if(currentLogType === 'cardio') document.getElementById('cardio-duration').value = ''; 
         if(document.getElementById('machine-select-weight').value === '_new') document.getElementById('machine-custom-weight').value = '';
         
         setTimeout(() => { btn.innerHTML = originalText; btn.style.background = "var(--primary-color)"; }, 1500);
-        syncDateData(); // プレースホルダー等の更新
+        syncDateData(); 
 
         document.getElementById('stats-date').value = date;
         if(!document.getElementById('tab-stats').classList.contains('hidden')) {
@@ -418,7 +432,6 @@
         }
     }
 
-    // ★ セレクトボックスの中身を作る処理
     function updateMachineDatalists() {
         const wSelect = document.getElementById('machine-select-weight');
         const loggedW = db.logs.filter(l => l.type === 'weight' || !l.type).map(l => l.machine);
@@ -434,7 +447,6 @@
                             cOptions.map(m => `<option value="${m}">${m}</option>`).join('') + 
                             '<option value="_new">➕ 新しく入力する...</option>';
                             
-        // カスタム入力欄を隠す
         document.getElementById('machine-custom-weight').classList.add('hidden');
         document.getElementById('machine-custom-cardio').classList.add('hidden');
     }
@@ -450,6 +462,14 @@
             if(log.sets) log.sets.forEach(s => totalSets += (s.setsCount || 1));
             return totalSets * kcalPerSet;
         }
+    }
+
+    // ★ カレンダーの日付タップでジャンプさせる関数
+    function clickCalendarDate(dateStr) {
+        document.getElementById('stats-date').value = dateStr;
+        renderMonthlySummary(); 
+        updateDailyStats();
+        document.getElementById('daily-report-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function renderMonthlySummary() {
@@ -472,7 +492,8 @@
         for(let i = 1; i <= daysInMonth; i++) {
             const dStr = `${prefix}-${i.toString().padStart(2, '0')}`;
             const isActive = daysVisited.has(dStr) ? 'active' : '';
-            calHtml += `<div class="cal-day ${isActive}">${i}</div>`;
+            // ★ onclickイベントを追加
+            calHtml += `<div class="cal-day ${isActive}" onclick="clickCalendarDate('${dStr}')">${i}</div>`;
         }
         document.getElementById('view-calendar').innerHTML = calHtml;
 
@@ -494,7 +515,6 @@
         }
     }
 
-    // カロリー＆体重推移
     function renderMixedChart() {
         const allDatesSet = new Set([...db.logs.map(l => l.date), ...Object.keys(db.weights)]);
         const sortedDates = Array.from(allDatesSet).sort((a,b) => new Date(a) - new Date(b));
@@ -509,8 +529,6 @@
             let dayCal = 0;
             dayLogs.forEach(log => dayCal += calcCalories(log));
             calData.push(Math.round(dayCal));
-
-            // 未入力の日は null にし、グラフ上で線を補完させる
             weightData.push(db.weights[d] || null);
         });
 
@@ -659,7 +677,6 @@
     function saveSettings() {
         db.settings.weight = parseFloat(document.getElementById('user-weight').value) || 65;
         db.settings.goal = parseInt(document.getElementById('user-goal').value) || 20;
-        // バグ回避: 設定から勝手にその日の体重に上書きする処理を削除しました。
         localStorage.setItem('gymLogProData', JSON.stringify(db));
         alert("設定を保存しました。");
         syncDateData();
