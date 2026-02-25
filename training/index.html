@@ -26,8 +26,8 @@
         input, select { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 1rem; box-sizing: border-box; outline: none; }
         input:focus, select:focus { border-color: var(--primary-color); }
         
-        /* ★ 日付入力欄のサイズ調整 */
-        input[type="date"] { max-width: 160px; } /* 20%ほど小さくし、はみ出しを防止 */
+        /* 日付入力欄のサイズ調整 */
+        input[type="date"] { max-width: 160px; } 
 
         button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--primary-color); color: #000; box-shadow: 0 4px 10px rgba(0, 255, 136, 0.3); }
@@ -100,7 +100,8 @@
                     <label style="margin-top: 0;">日付</label>
                     <input type="date" id="log-date" onchange="syncDateData()" style="width: 100%;">
                 </div>
-                <div style="width: 90px;"> <label style="margin-top: 0;">体重</label>
+                <div style="width: 90px;">
+                    <label style="margin-top: 0;">体重</label>
                     <div style="position: relative;">
                         <input type="number" step="0.1" id="log-weight" style="padding-right: 20px; padding-left: 8px; text-align: center;">
                         <span style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--text-sub); font-size: 0.8rem; pointer-events: none;">kg</span>
@@ -154,7 +155,7 @@
             </div>
 
             <div class="summary-header">
-                <div class="summary-title" id="summary-month-title">2026年2月 の記録</div>
+                <div class="summary-title" id="summary-month-title">---</div>
                 <div class="summary-count" id="summary-workout-days">0 <span>日</span></div>
             </div>
 
@@ -212,7 +213,14 @@
             <input type="number" id="user-goal" placeholder="例: 20">
             
             <button class="btn-primary" onclick="saveSettings()" style="margin-top: 20px;">設定を保存</button>
-            <button class="btn-secondary" onclick="exportData()" style="margin-top: 15px;">データのバックアップ (JSON)</button>
+            
+            <h3 style="margin-top: 30px; font-size: 0.95rem; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">データ管理</h3>
+            <p style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 10px;">ブラウザのキャッシュを消去するとデータが消えてしまいます。定期的なバックアップをおすすめします。</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn-secondary" style="font-size: 0.85rem;" onclick="exportData()">📤 バックアップ保存</button>
+                <button class="btn-secondary" style="font-size: 0.85rem;" onclick="document.getElementById('import-file').click()">📥 データを復元</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+            </div>
         </div>
     </div>
 </div>
@@ -243,7 +251,7 @@
     let myHistoryChart = null; 
     let myMixedChart = null; 
 
-    // ★ 初期化
+    // 初期化
     const todayStr = new Date().toLocaleDateString('sv-SE');
     document.getElementById('log-date').value = todayStr;
     syncDateData(); 
@@ -689,12 +697,45 @@
         document.getElementById('user-goal').value = db.settings.goal || 20;
     }
 
+    // ★ データのバックアップ (エクスポート)
     function exportData() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
         const dlAnchorElem = document.createElement('a');
         dlAnchorElem.setAttribute("href", dataStr);
-        dlAnchorElem.setAttribute("download", "gymlog_backup.json");
+        // ファイル名に今日の日付を入れると分かりやすいです
+        const today = new Date().toLocaleDateString('ja-JP').replace(/\//g, '');
+        dlAnchorElem.setAttribute("download", `GymLogPro_backup_${today}.json`);
         dlAnchorElem.click();
+    }
+
+    // ★ データの復元 (インポート)
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                // 簡易的なデータ形式のチェック
+                if (importedData && importedData.logs && importedData.settings) {
+                    if(confirm("現在のデータは上書きされます。復元してもよろしいですか？")) {
+                        localStorage.setItem('gymLogProData', JSON.stringify(importedData));
+                        alert("データを復元しました！ページを再読み込みします。");
+                        location.reload();
+                    }
+                } else {
+                    alert(" GymLog Pro のバックアップファイルではないようです。");
+                }
+            } catch (error) {
+                alert("ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。");
+            }
+        };
+        // 読み込みを実行
+        reader.readAsText(file);
+        
+        // 同じファイルを再度選べるようにinputの中身をリセット
+        event.target.value = '';
     }
 </script>
 
