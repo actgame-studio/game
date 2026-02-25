@@ -25,6 +25,10 @@
         label { font-size: 0.85rem; color: var(--text-sub); display: block; margin-bottom: 5px; margin-top: 15px; }
         input, select { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 1rem; box-sizing: border-box; outline: none; }
         input:focus, select:focus { border-color: var(--primary-color); }
+        
+        /* ★ 日付入力欄のサイズ調整 */
+        input[type="date"] { max-width: 160px; } /* 20%ほど小さくし、はみ出しを防止 */
+
         button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--primary-color); color: #000; box-shadow: 0 4px 10px rgba(0, 255, 136, 0.3); }
         .btn-primary:active { transform: scale(0.98); }
@@ -91,15 +95,15 @@
         <div class="card">
             <h2>トレーニング記録</h2>
             
-            <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label style="margin-top: 0;">日付</label>
-                    <input type="date" id="log-date" onchange="syncDateData()">
+                    <input type="date" id="log-date" onchange="syncDateData()" style="width: 100%;">
                 </div>
-                <div style="width: 100px;"> <label style="margin-top: 0;">体重</label>
+                <div style="width: 90px;"> <label style="margin-top: 0;">体重</label>
                     <div style="position: relative;">
-                        <input type="number" step="0.1" id="log-weight" style="padding-right: 25px; text-align: center;">
-                        <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-sub); font-size: 0.8rem; pointer-events: none;">kg</span>
+                        <input type="number" step="0.1" id="log-weight" style="padding-right: 20px; padding-left: 8px; text-align: center;">
+                        <span style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--text-sub); font-size: 0.8rem; pointer-events: none;">kg</span>
                     </div>
                 </div>
             </div>
@@ -265,7 +269,6 @@
         const latestDate = dates.length > 0 ? dates[dates.length - 1] : null;
         const latestWeight = latestDate ? db.weights[latestDate] : db.settings.weight;
         
-        // プレースホルダーを短くし、ヒントテキストに前回体重を表示
         weightInput.placeholder = "---";
         document.getElementById('weight-hint-text').innerText = `※前回入力値: ${latestWeight}kg (体重のみの保存も可)`;
     }
@@ -328,15 +331,13 @@
         }
     }
 
-    // ★ 初期値を空欄に変更
     function addSetField(weight = '', reps = '', setsCount = '') {
         const container = document.getElementById('sets-container');
-        // コピー時の処理
         if (weight === '' && container.children.length > 0) {
             const lastRow = container.lastElementChild;
             weight = lastRow.querySelector('.set-weight').value;
             reps = lastRow.querySelector('.set-reps').value;
-            setsCount = ''; // コピー時もセット数は空にする
+            setsCount = ''; 
         }
         const div = document.createElement('div');
         div.className = 'set-row';
@@ -388,8 +389,6 @@
                 const cInputs = document.querySelectorAll('.set-count');
                 
                 wInputs.forEach((w, i) => {
-                    // セット数が空欄の場合はエラーにせず、最低限重さと回数があれば登録させるか、入力必須にするか
-                    // 今回は入力必須アラートを出す
                     if(w.value && rInputs[i].value && cInputs[i].value) {
                         sets.push({ weight: parseFloat(w.value), reps: parseInt(rInputs[i].value), setsCount: parseInt(cInputs[i].value) });
                     }
@@ -464,7 +463,6 @@
         }
     }
 
-    // ★ カレンダーの日付タップでジャンプさせる関数
     function clickCalendarDate(dateStr) {
         document.getElementById('stats-date').value = dateStr;
         renderMonthlySummary(); 
@@ -492,7 +490,6 @@
         for(let i = 1; i <= daysInMonth; i++) {
             const dStr = `${prefix}-${i.toString().padStart(2, '0')}`;
             const isActive = daysVisited.has(dStr) ? 'active' : '';
-            // ★ onclickイベントを追加
             calHtml += `<div class="cal-day ${isActive}" onclick="clickCalendarDate('${dStr}')">${i}</div>`;
         }
         document.getElementById('view-calendar').innerHTML = calHtml;
