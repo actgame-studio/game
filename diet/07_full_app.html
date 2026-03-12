@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ぱちぱちダイエット</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
+  height:100dvh;overflow:hidden;
+  touch-action:manipulation;-webkit-user-select:none;user-select:none;
+  background:linear-gradient(180deg,#e8f5e9 0%,#c8e6c9 50%,#a5d6a7 100%);
+}
+
+/* ===== SCREENS ===== */
+.screen{position:fixed;inset:0;transition:transform .4s cubic-bezier(.4,0,.2,1);will-change:transform}
+.screen.hidden-left{transform:translateX(-100%);pointer-events:none}
+.screen.hidden-right{transform:translateX(100%);pointer-events:none}
+.screen.active{transform:translateX(0)}
+
+/* ===== TOP BAR (Record screen) ===== */
+.top-bar{
+  position:absolute;top:0;left:0;right:0;z-index:100;
+  padding:6px 12px 0;
+  background:rgba(255,255,255,0.88);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-radius:0 0 18px 18px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.06);
+}
+.top-row{display:flex;justify-content:space-between;align-items:center}
+
+/* Date nav */
+.date-nav{display:flex;align-items:center;gap:6px}
+.date-arrow{
+  width:26px;height:26px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.05);font-size:12px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  color:#78909c;
+}
+.date-arrow:active{background:rgba(0,0,0,0.12)}
+.date-label{font-size:12px;color:#546e7a;font-weight:700;min-width:110px;text-align:center;cursor:pointer}
+.date-today{font-size:8px;color:#fff;background:#66bb6a;border-radius:6px;padding:1px 5px;margin-left:4px;font-weight:700}
+
+/* Kcal */
+.kcal-display{text-align:right}
+.kcal-num{font-size:26px;font-weight:900;line-height:1;color:#43a047;transition:color .3s}
+.kcal-num.warn{color:#ef6c00}
+.kcal-num.danger{color:#d32f2f}
+.kcal-unit{font-size:11px;font-weight:600;color:#888}
+.kcal-sub{font-size:9px;color:#bbb}
+
+/* Jars row */
+.jars-row{display:flex;justify-content:center;gap:14px;padding:4px 0 8px}
+.jar{display:flex;flex-direction:column;align-items:center;position:relative}
+.jar-label{font-size:8px;font-weight:800;margin-bottom:1px;letter-spacing:0.5px}
+.jar-label.p-label{color:#e91e63}
+.jar-label.f-label{color:#ff9800}
+.jar-label.c-label{color:#4caf50}
+.tube{
+  width:36px;height:85px;
+  border:2.5px solid #ccc;border-top:none;
+  border-radius:0 0 18px 18px;
+  position:relative;overflow:hidden;
+  background:rgba(255,255,255,0.5);
+}
+.tube-top{width:44px;height:5px;background:#bbb;border-radius:3px;margin-bottom:-1px;position:relative;z-index:2}
+.tube-fill{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 15px 15px;transition:height 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+.tube-fill.p-fill{background:linear-gradient(180deg,rgba(233,30,99,0.3),rgba(233,30,99,0.6))}
+.tube-fill.f-fill{background:linear-gradient(180deg,rgba(255,152,0,0.3),rgba(255,152,0,0.6))}
+.tube-fill.c-fill{background:linear-gradient(180deg,rgba(76,175,80,0.3),rgba(76,175,80,0.6))}
+.tube-zone{
+  position:absolute;left:-1px;right:-1px;
+  border-top:1.5px dashed rgba(76,175,80,0.5);
+  border-bottom:1.5px dashed rgba(76,175,80,0.5);
+  background:rgba(76,175,80,0.07);
+  z-index:3;pointer-events:none;
+}
+.tube-val{font-size:8px;color:#888;font-weight:600;margin-top:1px;text-align:center}
+.tube-particles{position:absolute;bottom:0;left:0;right:0;top:0;z-index:2;pointer-events:none;overflow:hidden;border-radius:0 0 15px 15px}
+.tube-particle{position:absolute;border-radius:50%;animation:tubeFloat 3s ease-in-out infinite}
+@keyframes tubeFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+/* ===== Category tabs ===== */
+.cat-tabs{
+  position:absolute;top:182px;left:0;right:0;z-index:90;
+  display:flex;gap:6px;padding:0 8px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{
+  flex-shrink:0;padding:5px 12px;
+  border-radius:14px;border:none;
+  font-size:11px;font-weight:700;
+  background:rgba(255,255,255,0.5);color:#78909c;
+  cursor:pointer;white-space:nowrap;
+  transition:all .2s;
+}
+.cat-tab.active{background:#fff;color:#43a047;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.cat-tab:active{transform:scale(0.95)}
+
+/* ===== Canvas ===== */
+#mainCanvas{position:fixed;top:0;left:0;z-index:10;pointer-events:none}
+
+/* ===== Bubbles ===== */
+.bubble-layer{position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;overflow:hidden}
+.bubble{
+  position:absolute;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform 0.15s;
+}
+.bubble:active{transform:scale(0.92)!important}
+.bubble-inner{
+  width:100%;height:100%;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,0.6) 0%,rgba(255,255,255,0.15) 50%,transparent 70%);
+  border:2px solid rgba(255,255,255,0.45);
+  box-shadow:inset 0 -4px 8px rgba(0,0,0,0.04),0 6px 24px rgba(0,0,0,0.08),inset 0 2px 4px rgba(255,255,255,0.5);
+  padding:6px;
+}
+.bubble-emoji{font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))}
+.bubble-name{font-size:8px;font-weight:700;color:rgba(0,0,0,0.5);margin-top:1px;white-space:nowrap}
+.bubble-kcal{font-size:7px;color:rgba(0,0,0,0.3);font-weight:600}
+.bubble{animation:bFloat var(--dur,4s) ease-in-out infinite var(--delay,0s)}
+@keyframes bFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(var(--float-y,-10px)) scale(1.02)}}
+
+/* Pop animation */
+.bubble.popping{animation:none!important;transform:scale(0)!important;opacity:0!important;pointer-events:none!important;transition:transform .2s ease-in,opacity .2s!important}
+.bubble.reappear{animation:bFloat var(--dur,4s) ease-in-out infinite var(--delay,0s)!important;transform:scale(1)!important;opacity:1!important;pointer-events:auto!important;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .3s!important}
+
+/* Kcal toast */
+.kcal-toast{position:fixed;z-index:200;font-size:16px;font-weight:800;pointer-events:none;animation:toastUp 1.1s ease-out forwards}
+@keyframes toastUp{0%{transform:translateY(0) scale(0.5);opacity:0}15%{transform:translateY(-10px) scale(1.1);opacity:1}100%{transform:translateY(-60px) scale(0.9);opacity:0}}
+
+/* ===== History tray ===== */
+.history{
+  position:absolute;bottom:0;left:0;right:0;z-index:80;
+  background:rgba(255,255,255,0.8);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  padding:5px 10px 16px;
+  border-radius:14px 14px 0 0;
+  display:flex;align-items:center;gap:3px;
+  flex-wrap:wrap;min-height:42px;
+}
+.history-label{font-size:9px;color:#b0bec5;font-weight:600;margin-right:3px}
+.history-chip{
+  display:inline-flex;align-items:center;
+  background:rgba(0,0,0,0.05);border-radius:8px;
+  padding:2px 5px;font-size:10px;cursor:pointer;
+  animation:chipIn .3s cubic-bezier(.34,1.56,.64,1);
+  transition:background .2s,transform .15s;
+  position:relative;
+}
+.history-chip:active{transform:scale(0.85);background:rgba(233,30,99,0.15)}
+.history-chip.removing{
+  animation:chipOut .35s ease-in forwards;
+  pointer-events:none;
+}
+@keyframes chipIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes chipOut{
+  0%{transform:scale(1);opacity:1}
+  30%{transform:scale(1.15);opacity:1}
+  100%{transform:scale(0) translateY(-20px);opacity:0}
+}
+
+/* Nav buttons */
+.nav-btn{
+  position:absolute;z-index:85;
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:rgba(255,255,255,0.85);
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
+  font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-btn:active{background:rgba(255,255,255,1);transform:scale(0.95)}
+.undo-btn{bottom:50px;right:10px;opacity:0;transition:opacity .3s;pointer-events:none}
+.undo-btn.show{opacity:1;pointer-events:auto}
+.summary-btn{bottom:50px;left:10px}
+
+/* =============================================== */
+/* ===== WEEKLY SUMMARY SCREEN ===== */
+/* =============================================== */
+.summary-screen{
+  background:linear-gradient(180deg,#f3e5f5 0%,#e8eaf6 50%,#e0f7fa 100%);
+  display:flex;flex-direction:column;
+}
+.summary-top{
+  padding:12px 16px 10px;
+  background:rgba(255,255,255,0.88);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-radius:0 0 18px 18px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.06);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.summary-back{
+  width:32px;height:32px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.05);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.summary-back:active{background:rgba(0,0,0,0.12)}
+.summary-title{font-size:14px;font-weight:800;color:#5c6bc0}
+.summary-period{
+  display:flex;gap:0;background:rgba(0,0,0,0.05);border-radius:10px;overflow:hidden;
+}
+.period-btn{
+  padding:4px 12px;border:none;background:transparent;
+  font-size:10px;font-weight:700;color:#90a4ae;cursor:pointer;
+}
+.period-btn.active{background:#fff;color:#5c6bc0;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+
+/* Summary body */
+.summary-body{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:16px;
+}
+
+/* Week row of aurora balls */
+.week-row{
+  display:flex;justify-content:space-around;align-items:flex-end;
+  margin:12px 0 20px;padding:0 4px;
+}
+.day-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+.day-label{font-size:9px;color:#90a4ae;font-weight:700}
+.day-label.today{color:#5c6bc0;font-weight:900}
+
+/* Aurora ball */
+.aurora-ball{
+  width:38px;height:38px;border-radius:50%;
+  position:relative;overflow:hidden;
+  box-shadow:0 3px 12px rgba(0,0,0,0.1);
+  cursor:pointer;transition:transform .2s;
+}
+.aurora-ball:active{transform:scale(0.9)}
+.aurora-ball.perfect{
+  animation:auroraSpin 4s linear infinite;
+  box-shadow:0 0 16px rgba(156,39,176,0.3),0 3px 12px rgba(0,0,0,0.1);
+}
+.aurora-ball.good{box-shadow:0 0 8px rgba(76,175,80,0.3),0 3px 12px rgba(0,0,0,0.1)}
+.aurora-ball.empty{background:#e0e0e0!important;opacity:0.4}
+.aurora-ball.future{background:#f5f5f5!important;opacity:0.2;box-shadow:none}
+@keyframes auroraSpin{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
+
+/* Perfect sparkle */
+.aurora-ball.perfect::after{
+  content:'';position:absolute;inset:-2px;border-radius:50%;
+  background:conic-gradient(rgba(233,30,99,0.4),rgba(255,152,0,0.4),rgba(76,175,80,0.4),rgba(233,30,99,0.4));
+  animation:sparkleRot 3s linear infinite;
+  z-index:-1;
+}
+@keyframes sparkleRot{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+.day-kcal{font-size:8px;color:#b0bec5;font-weight:600}
+
+/* Day detail */
+.day-detail-mini{
+  display:flex;gap:6px;justify-content:center;
+  margin-top:2px;
+}
+.mini-bar{
+  width:6px;height:20px;border-radius:3px;
+  background:#eee;position:relative;overflow:hidden;
+}
+.mini-bar-fill{
+  position:absolute;bottom:0;left:0;right:0;border-radius:3px;
+  transition:height .3s;
+}
+
+/* Stats cards */
+.stat-card{
+  background:rgba(255,255,255,0.8);
+  border-radius:16px;padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.04);
+}
+.stat-card-title{font-size:11px;font-weight:700;color:#78909c;margin-bottom:8px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.stat-label{font-size:10px;color:#90a4ae;font-weight:600}
+.stat-value{font-size:14px;font-weight:800;color:#546e7a}
+.stat-bar{height:6px;border-radius:3px;background:#eee;flex:1;margin:0 8px;position:relative;overflow:hidden}
+.stat-bar-fill{height:100%;border-radius:3px;transition:width .6s}
+
+/* Perfect counter */
+.perfect-counter{
+  text-align:center;padding:16px;
+  background:linear-gradient(135deg,rgba(233,30,99,0.08),rgba(255,152,0,0.08),rgba(76,175,80,0.08));
+  border-radius:16px;margin-bottom:12px;
+}
+.perfect-num{font-size:36px;font-weight:900;background:linear-gradient(135deg,#e91e63,#ff9800,#4caf50);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.perfect-label{font-size:11px;color:#90a4ae;font-weight:600;margin-top:2px}
+
+/* Streak */
+.streak-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:linear-gradient(135deg,#fff3e0,#fff8e1);
+  border-radius:20px;padding:6px 14px;
+  font-size:12px;font-weight:700;color:#e65100;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* Monthly calendar */
+.month-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+  margin-top:8px;
+}
+.month-day{
+  aspect-ratio:1;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:600;color:#b0bec5;
+  position:relative;
+}
+.month-day.has-data{color:#546e7a}
+.month-day-ball{
+  position:absolute;inset:3px;border-radius:50%;
+  opacity:0.6;
+}
+
+/* Calendar popup */
+.cal-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.3);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.cal-overlay.show{opacity:1;pointer-events:auto}
+.cal-popup{
+  background:#fff;border-radius:20px;padding:16px;width:300px;
+  box-shadow:0 10px 40px rgba(0,0,0,0.15);
+  transform:scale(0.9);transition:transform .3s;
+}
+.cal-overlay.show .cal-popup{transform:scale(1)}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cal-title{font-size:14px;font-weight:800;color:#546e7a}
+.cal-nav{width:28px;height:28px;border:none;border-radius:50%;background:rgba(0,0,0,0.05);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-dow{font-size:8px;color:#b0bec5;font-weight:700;padding:4px 0}
+.cal-day{
+  padding:6px 0;border-radius:50%;font-size:11px;color:#78909c;cursor:pointer;
+  position:relative;font-weight:600;
+}
+.cal-day:active{background:rgba(0,0,0,0.06)}
+.cal-day.today{color:#43a047;font-weight:900}
+.cal-day.selected{background:#e8f5e9;color:#2e7d32;font-weight:900}
+.cal-day.has-record::after{
+  content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:#66bb6a;
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== RECORD SCREEN ==================== -->
+<div class="screen active" id="recordScreen">
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-row">
+      <div class="date-nav">
+        <button class="date-arrow" onclick="changeDate(-1)">◀</button>
+        <span class="date-label" id="dateLabel" onclick="showCalendar()"></span>
+        <button class="date-arrow" onclick="changeDate(1)">▶</button>
+      </div>
+      <div class="kcal-display">
+        <span class="kcal-num" id="kcalNum">0</span>
+        <span class="kcal-unit">kcal</span>
+        <div class="kcal-sub">/ <span id="kcalTarget">1,800</span></div>
+      </div>
+    </div>
+    <div class="jars-row">
+      <div class="jar" id="jarP">
+        <div class="jar-label p-label">P たんぱく</div>
+        <div class="tube-top"></div>
+        <div class="tube" id="tubeP"><div class="tube-zone" id="zoneP"></div><div class="tube-fill p-fill" id="fillP" style="height:0%"></div><div class="tube-particles" id="particlesP"></div></div>
+        <div class="tube-val" id="valP">0g</div>
+      </div>
+      <div class="jar" id="jarF">
+        <div class="jar-label f-label">F 脂質</div>
+        <div class="tube-top"></div>
+        <div class="tube" id="tubeF"><div class="tube-zone" id="zoneF"></div><div class="tube-fill f-fill" id="fillF" style="height:0%"></div><div class="tube-particles" id="particlesF"></div></div>
+        <div class="tube-val" id="valF">0g</div>
+      </div>
+      <div class="jar" id="jarC">
+        <div class="jar-label c-label">C 炭水化物</div>
+        <div class="tube-top"></div>
+        <div class="tube" id="tubeC"><div class="tube-zone" id="zoneC"></div><div class="tube-fill c-fill" id="fillC" style="height:0%"></div><div class="tube-particles" id="particlesC"></div></div>
+        <div class="tube-val" id="valC">0g</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category tabs -->
+  <div class="cat-tabs" id="catTabs"></div>
+
+  <!-- Canvas -->
+  <canvas id="mainCanvas"></canvas>
+
+  <!-- Bubble layer -->
+  <div class="bubble-layer" id="bubbleLayer"></div>
+
+  <!-- History -->
+  <div class="history" id="history">
+    <span class="history-label" id="historyLabel">🍽 きょう：</span>
+  </div>
+
+  <!-- Undo -->
+  <button class="nav-btn undo-btn" id="undoBtn" onclick="undoLast()">↩️</button>
+  <!-- Summary -->
+  <button class="nav-btn summary-btn" onclick="showSummary()">📊</button>
+</div>
+
+<!-- ==================== SUMMARY SCREEN ==================== -->
+<div class="screen hidden-right summary-screen" id="summaryScreen">
+  <div class="summary-top">
+    <button class="summary-back" onclick="hideSummary()">◀</button>
+    <div class="summary-title">📊 まとめ</div>
+    <div class="summary-period">
+      <button class="period-btn active" onclick="setPeriod('week',this)">週間</button>
+      <button class="period-btn" onclick="setPeriod('month',this)">月間</button>
+    </div>
+  </div>
+  <div class="summary-body" id="summaryBody"></div>
+</div>
+
+<!-- ==================== CALENDAR POPUP ==================== -->
+<div class="cal-overlay" id="calOverlay" onclick="if(event.target===this)hideCalendar()">
+  <div class="cal-popup">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calNav(-1)">◀</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" onclick="calNav(1)">▶</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Sound Engine (Web Audio API - no external files needed)
+// ============================================================
+var audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+var SE = {
+  // Bubble pop - cute "pochi" sound
+  pop: function() {
+    var ctx = getAudioCtx();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+    // Sub bubble burst
+    var osc2 = ctx.createOscillator();
+    var gain2 = ctx.createGain();
+    osc2.connect(gain2); gain2.connect(ctx.destination);
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.02);
+    osc2.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
+    gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.02);
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    osc2.start(ctx.currentTime + 0.02);
+    osc2.stop(ctx.currentTime + 0.1);
+  },
+
+  // Sparkle - particles arriving at tube
+  sparkle: function(delay) {
+    setTimeout(function(){
+      var ctx = getAudioCtx();
+      var t = ctx.currentTime;
+      [1200, 1500, 1800].forEach(function(freq, i) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + i * 0.06);
+        gain.gain.setValueAtTime(0, t + i * 0.06);
+        gain.gain.linearRampToValueAtTime(0.08, t + i * 0.06 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.12);
+        osc.start(t + i * 0.06);
+        osc.stop(t + i * 0.06 + 0.12);
+      });
+    }, delay || 0);
+  },
+
+  // Undo - soft descending tone
+  undo: function() {
+    var ctx = getAudioCtx();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.18);
+  },
+
+  // Tab switch - light tick
+  tick: function() {
+    var ctx = getAudioCtx();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1000, ctx.currentTime);
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.05);
+  },
+
+  // Achievement - cute fanfare when PFC enters target zone
+  achieve: function() {
+    var ctx = getAudioCtx();
+    var t = ctx.currentTime;
+    var notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+    notes.forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + i * 0.1);
+      gain.gain.setValueAtTime(0, t + i * 0.1);
+      gain.gain.linearRampToValueAtTime(0.12, t + i * 0.1 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.25);
+      osc.start(t + i * 0.1);
+      osc.stop(t + i * 0.1 + 0.25);
+    });
+  },
+
+  // Warning - gentle alert when exceeding max
+  warn: function() {
+    var ctx = getAudioCtx();
+    var t = ctx.currentTime;
+    [400, 350].forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + i * 0.12);
+      gain.gain.setValueAtTime(0.1, t + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.12);
+      osc.start(t + i * 0.12);
+      osc.stop(t + i * 0.12 + 0.12);
+    });
+  },
+
+  // Page transition - whoosh
+  whoosh: function() {
+    var ctx = getAudioCtx();
+    var bufferSize = ctx.sampleRate * 0.15;
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    var source = ctx.createBufferSource();
+    source.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(800, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.1);
+    filter.Q.value = 2;
+    var gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    source.start(ctx.currentTime);
+    source.stop(ctx.currentTime + 0.15);
+  },
+};
+
+// Track PFC zone status for achievement sounds
+var prevPFCStatus = { p: false, f: false, c: false };
+
+// ============================================================
+// Food Database with categories
+// ============================================================
+var CATEGORIES = [
+  { id:'fav',    label:'⭐ よく使う',     ids:[0,3,8,4,9,13,20,5] },
+  { id:'staple', label:'🍚 主食',         ids:[0,1,2] },
+  { id:'protein',label:'🍖 たんぱく質',   ids:[3,4,5,6,7,8] },
+  { id:'veg',    label:'🥦 野菜・副菜',   ids:[9,10,11,12,13] },
+  { id:'drink',  label:'🥤 飲み物',       ids:[14,15,16,17] },
+  { id:'sauce',  label:'🍲 調味・汁物',   ids:[18,19,20] },
+  { id:'heavy',  label:'🍜 がっつり',     ids:[21,22] },
+  { id:'fruit',  label:'🍎 フルーツ',     ids:[23,24] },
+  { id:'all',    label:'📋 すべて',       ids:null },
+];
+
+var FOODS = [
+  // === 主食 ===
+  { emoji:'🍚', name:'ごはん',       unit:'50g',     kcal:78,  p:1.3,  f:0.2, c:18.5 },  // 0
+  { emoji:'🍞', name:'パン',         unit:'1枚',     kcal:260, p:9,    f:4,   c:46   },  // 1
+  { emoji:'🍙', name:'おにぎり',     unit:'1個',     kcal:180, p:3,    f:0.5, c:40   },  // 2
+  // === たんぱく質 ===
+  { emoji:'🥚', name:'たまご',       unit:'1個',     kcal:91,  p:7,    f:7,   c:0.2  },  // 3
+  { emoji:'🍗', name:'チキンバー',   unit:'1本',     kcal:65,  p:13,   f:1.2, c:0    },  // 4
+  { emoji:'🐟', name:'銀鮭',         unit:'1切',     kcal:150, p:16,   f:10,  c:0.2  },  // 5
+  { emoji:'🐡', name:'ブリ',         unit:'1切',     kcal:178, p:17,   f:14,  c:0.2  },  // 6
+  { emoji:'🥩', name:'牛肉',         unit:'100g',    kcal:250, p:20,   f:18,  c:0    },  // 7
+  { emoji:'🫘', name:'納豆',         unit:'1パック', kcal:80,  p:7.4,  f:4,   c:2.5  },  // 8
+  // === 野菜・副菜 ===
+  { emoji:'🥦', name:'ブロッコリー', unit:'50g',     kcal:17,  p:2.2,  f:0.3, c:2.6  },  // 9
+  { emoji:'🍄', name:'えのき',       unit:'50g',     kcal:11,  p:1.4,  f:0.1, c:3.7  },  // 10
+  { emoji:'🌱', name:'もやし',       unit:'100g',    kcal:14,  p:1.7,  f:0.1, c:2.6  },  // 11
+  { emoji:'🥗', name:'サラダ',       unit:'1皿',     kcal:30,  p:1,    f:0.2, c:6    },  // 12
+  { emoji:'🥬', name:'めかぶ',       unit:'1パック', kcal:7,   p:0.5,  f:0.2, c:1.4  },  // 13
+  // === 飲み物 ===
+  { emoji:'🍅', name:'トマトジュース', unit:'200ml', kcal:39,  p:1.8,  f:0,   c:8.7  },  // 14
+  { emoji:'🥛', name:'牛乳',         unit:'200ml',   kcal:138, p:7,    f:8,   c:10   },  // 15
+  { emoji:'☕', name:'コーヒー',     unit:'1杯',     kcal:6,   p:0.3,  f:0,   c:1    },  // 16
+  { emoji:'🧃', name:'ジュース',     unit:'200ml',   kcal:90,  p:0,    f:0,   c:23   },  // 17
+  // === 調味・汁物 ===
+  { emoji:'🍲', name:'キムチ鍋の元', unit:'1人前',   kcal:23,  p:1,    f:1,   c:2.4  },  // 18
+  { emoji:'🫗', name:'ポン酢',       unit:'大さじ1', kcal:15,  p:1,    f:0,   c:2    },  // 19
+  { emoji:'🥣', name:'味噌汁',       unit:'1杯',     kcal:30,  p:2,    f:0.8, c:3.5  },  // 20
+  // === がっつり ===
+  { emoji:'🍜', name:'ラーメン',     unit:'1杯',     kcal:470, p:18,   f:15,  c:65   },  // 21
+  { emoji:'🍛', name:'カレー',       unit:'1皿',     kcal:520, p:14,   f:12,  c:85   },  // 22
+  // === フルーツ ===
+  { emoji:'🍌', name:'バナナ',       unit:'1本',     kcal:86,  p:1,    f:0.2, c:22   },  // 23
+  { emoji:'🍎', name:'りんご',       unit:'1/2個',   kcal:57,  p:0.2,  f:0.1, c:15   },  // 24
+];
+
+var BUBBLE_COLORS = [
+  'rgba(255,200,200,0.35)','rgba(200,220,255,0.35)','rgba(255,245,200,0.35)',
+  'rgba(255,220,180,0.35)','rgba(200,240,255,0.35)','rgba(220,255,220,0.35)',
+  'rgba(255,230,200,0.35)','rgba(255,210,180,0.35)','rgba(240,240,255,0.35)',
+  'rgba(255,255,210,0.35)','rgba(255,210,210,0.35)','rgba(220,210,200,0.35)',
+  'rgba(245,245,245,0.35)','rgba(210,245,210,0.35)','rgba(255,220,220,0.35)',
+  'rgba(230,230,255,0.35)','rgba(245,235,220,0.35)','rgba(255,240,230,0.35)',
+  'rgba(220,240,230,0.35)','rgba(240,230,210,0.35)','rgba(255,245,235,0.35)',
+  'rgba(225,240,255,0.35)','rgba(255,225,200,0.35)','rgba(255,250,200,0.35)',
+  'rgba(240,220,230,0.35)',
+];
+
+var PFC_COLORS = {
+  p:{main:'#e91e63',light:'rgba(233,30,99,0.7)',particle:'rgba(233,30,99,0.8)'},
+  f:{main:'#ff9800',light:'rgba(255,152,0,0.7)',particle:'rgba(255,152,0,0.8)'},
+  c:{main:'#4caf50',light:'rgba(76,175,80,0.7)',particle:'rgba(76,175,80,0.8)'},
+};
+
+var PFC_TARGETS = {
+  p:{min:80,max:120,scale:160},
+  f:{min:30,max:55,scale:80},
+  c:{min:150,max:220,scale:280},
+};
+var KCAL_TARGET = 1800;
+
+// ============================================================
+// State - localStorage backed
+// ============================================================
+var currentDate = new Date();
+var calViewDate = new Date();
+currentDate.setHours(0,0,0,0);
+var currentCat = 'fav';
+
+function dateKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function loadDay(d) {
+  var key = 'diet_' + dateKey(d);
+  try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; }
+}
+function saveDay(d, list) {
+  localStorage.setItem('diet_' + dateKey(d), JSON.stringify(list));
+}
+
+var dayRecords = [];
+var W, H;
+
+function recalcTotals() {
+  var t = {kcal:0,p:0,f:0,c:0};
+  dayRecords.forEach(function(idx){
+    var food = FOODS[idx];
+    t.kcal+=food.kcal; t.p+=food.p; t.f+=food.f; t.c+=food.c;
+  });
+  return t;
+}
+
+// ============================================================
+// Canvas
+// ============================================================
+var canvas, ctx, dpr;
+var flyingParticles = [];
+
+function initCanvas() {
+  canvas = document.getElementById('mainCanvas');
+  W = window.innerWidth; H = window.innerHeight;
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+}
+
+// ============================================================
+// PFC zone markers
+// ============================================================
+function initZones() {
+  ['p','f','c'].forEach(function(k){
+    var t = PFC_TARGETS[k];
+    var zone = document.getElementById('zone'+k.toUpperCase());
+    var minPct = (t.min/t.scale)*100;
+    var maxPct = (t.max/t.scale)*100;
+    zone.style.bottom = minPct+'%';
+    zone.style.height = (maxPct-minPct)+'%';
+  });
+}
+
+// ============================================================
+// Date management
+// ============================================================
+var DAYS = ['日','月','火','水','木','金','土'];
+
+function formatDate(d) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var diff = Math.round((d - today) / 86400000);
+  var prefix = (d.getMonth()+1)+'月'+d.getDate()+'日（'+DAYS[d.getDay()]+'）';
+  if (diff === 0) return prefix + '<span class="date-today">今日</span>';
+  if (diff === -1) return prefix + '<span class="date-today" style="background:#90a4ae">昨日</span>';
+  return prefix;
+}
+
+function updateDateLabel() {
+  document.getElementById('dateLabel').innerHTML = formatDate(currentDate);
+  var today = new Date(); today.setHours(0,0,0,0);
+  var diff = Math.round((currentDate - today) / 86400000);
+  var label = diff === 0 ? 'きょう' : diff === -1 ? 'きのう' : (currentDate.getMonth()+1)+'/'+currentDate.getDate();
+  document.getElementById('historyLabel').textContent = '🍽 ' + label + '：';
+}
+
+function changeDate(delta) {
+  SE.tick();
+  currentDate = new Date(currentDate.getTime() + delta * 86400000);
+  loadCurrentDay();
+}
+
+function loadCurrentDay() {
+  dayRecords = loadDay(currentDate);
+  updateDateLabel();
+  // Clear tube particles
+  ['P','F','C'].forEach(function(k){
+    document.getElementById('particles'+k).innerHTML='';
+  });
+  updateStatsImmediate();
+  rebuildHistory();
+}
+
+// ============================================================
+// Category tabs
+// ============================================================
+function initTabs() {
+  var container = document.getElementById('catTabs');
+  CATEGORIES.forEach(function(cat){
+    var btn = document.createElement('button');
+    btn.className = 'cat-tab' + (cat.id === currentCat ? ' active' : '');
+    btn.textContent = cat.label;
+    btn.onclick = function(){ switchCategory(cat.id, btn); };
+    container.appendChild(btn);
+  });
+}
+
+function switchCategory(catId, btn) {
+  currentCat = catId;
+  document.querySelectorAll('.cat-tab').forEach(function(t){ t.classList.remove('active'); });
+  btn.classList.add('active');
+  SE.tick();
+  createBubbles();
+}
+
+function getFoodIndices() {
+  var cat = CATEGORIES.find(function(c){ return c.id === currentCat; });
+  if (!cat || cat.ids === null) return FOODS.map(function(_,i){return i;});
+  return cat.ids;
+}
+
+// ============================================================
+// Create bubbles
+// ============================================================
+function createBubbles() {
+  var layer = document.getElementById('bubbleLayer');
+  layer.innerHTML = '';
+  var ids = getFoodIndices();
+  var JAR_H = 215, BOT_H = 50;
+  var positions = [];
+
+  ids.forEach(function(foodIdx, i){
+    var food = FOODS[foodIdx];
+    var size = 68 + Math.random()*14;
+    var tries=0, x, y, overlap;
+    do {
+      x = 10 + Math.random()*(W - size - 20);
+      y = JAR_H + 8 + Math.random()*(H - JAR_H - BOT_H - size - 16);
+      overlap = positions.some(function(p){
+        var dx=x-p.x, dy=y-p.y;
+        return Math.sqrt(dx*dx+dy*dy) < (size/2+p.s/2+8);
+      });
+      tries++;
+    } while(overlap && tries<80);
+    positions.push({x:x,y:y,s:size});
+
+    var el = document.createElement('div');
+    el.className = 'bubble';
+    var floatY = -(8+Math.random()*8);
+    el.style.cssText =
+      'left:'+x+'px;top:'+y+'px;width:'+size+'px;height:'+size+'px;'+
+      'background:'+BUBBLE_COLORS[foodIdx%BUBBLE_COLORS.length]+';'+
+      '--dur:'+(3.5+Math.random()*2)+'s;--delay:'+(Math.random()*3)+'s;--float-y:'+floatY+'px;';
+    el.innerHTML =
+      '<div class="bubble-inner">'+
+        '<span class="bubble-emoji">'+food.emoji+'</span>'+
+        '<span class="bubble-name">'+food.name+'</span>'+
+        '<span class="bubble-kcal">'+food.unit+' '+food.kcal+'kcal</span>'+
+      '</div>';
+    el.addEventListener('click', function(e){ popBubble(e,el,food,foodIdx); });
+    el.dataset.foodIndex = foodIdx;
+    layer.appendChild(el);
+  });
+}
+
+// ============================================================
+// Pop bubble
+// ============================================================
+function popBubble(e, el, food, idx) {
+  var rect = el.getBoundingClientRect();
+  var cx = rect.left + rect.width/2;
+  var cy = rect.top + rect.height/2;
+
+  // Sound!
+  SE.pop();
+  SE.sparkle(400);
+
+  // Pop animation
+  el.classList.add('popping');
+  el.classList.remove('reappear');
+  setTimeout(function(){
+    el.classList.remove('popping');
+    el.classList.add('reappear');
+  }, 1000);
+
+  // Toast
+  var toast = document.createElement('div');
+  toast.className = 'kcal-toast';
+  toast.textContent = '+'+food.kcal+' kcal';
+  toast.style.left = cx+'px'; toast.style.top = (cy-10)+'px';
+  toast.style.color = '#555';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 1200);
+
+  // PFC particles
+  spawnPFCParticles(cx, cy, food);
+
+  // Record
+  dayRecords.push(idx);
+  saveDay(currentDate, dayRecords);
+
+  setTimeout(function(){ updateStatsWithSound(); }, 500);
+  addHistoryChip(food, dayRecords.length - 1);
+
+  // Undo
+  var btn = document.getElementById('undoBtn');
+  btn.classList.add('show');
+  clearTimeout(btn._timeout);
+  btn._timeout = setTimeout(function(){ btn.classList.remove('show'); }, 5000);
+
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+// ============================================================
+// PFC Particles
+// ============================================================
+function spawnPFCParticles(cx, cy, food) {
+  var nutrients = [
+    {key:'p',val:food.p,color:PFC_COLORS.p},
+    {key:'f',val:food.f,color:PFC_COLORS.f},
+    {key:'c',val:food.c,color:PFC_COLORS.c},
+  ];
+  nutrients.forEach(function(n){
+    if(n.val<=0)return;
+    var count = Math.max(2, Math.min(20, Math.round(n.val/3)));
+    var jar = document.getElementById('jar'+n.key.toUpperCase());
+    var jarRect = jar.getBoundingClientRect();
+    var targetX = jarRect.left+jarRect.width/2;
+    var targetY = jarRect.top+jarRect.height/2+25;
+    for(var i=0;i<count;i++){
+      (function(idx){
+        var delay = idx*30+Math.random()*60;
+        setTimeout(function(){
+          flyingParticles.push({
+            x:cx, y:cy,
+            targetX:targetX+(Math.random()-0.5)*18,
+            targetY:targetY+(Math.random()-0.5)*18,
+            color:n.color.particle,
+            size:4+Math.random()*3,
+            progress:0, speed:0.015+Math.random()*0.01,
+            burstX:(Math.random()-0.5)*80,
+            burstY:(Math.random()-0.5)*80,
+            key:n.key,
+          });
+        }, delay);
+      })(i);
+    }
+  });
+}
+
+function addTubeParticle(key, color) {
+  var container = document.getElementById('particles'+key.toUpperCase());
+  var dot = document.createElement('div');
+  dot.className = 'tube-particle';
+  var size = 3+Math.random()*3;
+  dot.style.cssText = 'width:'+size+'px;height:'+size+'px;background:'+color+';left:'+(Math.random()*24+3)+'px;bottom:'+(Math.random()*55)+'px;opacity:'+(0.4+Math.random()*0.4)+';animation-delay:'+(Math.random()*3)+'s;animation-duration:'+(2+Math.random()*2)+'s;';
+  container.appendChild(dot);
+  while(container.children.length>35) container.removeChild(container.firstChild);
+}
+
+// ============================================================
+// Animation loop
+// ============================================================
+function animLoop() {
+  ctx.clearRect(0,0,W,H);
+  var alive=[];
+  flyingParticles.forEach(function(p){
+    p.progress += p.speed;
+    if(p.progress>=1){ addTubeParticle(p.key,p.color); return; }
+    var t=p.progress;
+    var burstFade = Math.max(0,1-t*2.5);
+    var travelT = Math.max(0,(t-0.2)/0.8);
+    var smoothT = travelT*travelT*(3-2*travelT);
+    var x = p.x + p.burstX*burstFade + (p.targetX-p.x)*smoothT;
+    var y = p.y + p.burstY*burstFade + (p.targetY-p.y)*smoothT;
+    var alpha = t>0.85 ? (1-t)/0.15 : 1;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.arc(x,y,p.size*(1-t*0.3),0,Math.PI*2); ctx.fillStyle=p.color; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,p.size*1.8,0,Math.PI*2); ctx.fillStyle=p.color.replace('0.8','0.15'); ctx.fill();
+    ctx.globalAlpha=1;
+    alive.push(p);
+  });
+  flyingParticles = alive;
+  requestAnimationFrame(animLoop);
+}
+
+// ============================================================
+// Stats update
+// ============================================================
+function updateStatsImmediate() {
+  var t = recalcTotals();
+  var ratio = t.kcal/KCAL_TARGET;
+  document.getElementById('kcalNum').textContent = t.kcal.toLocaleString();
+  var numEl = document.getElementById('kcalNum');
+  numEl.className = 'kcal-num'+(ratio>1?' danger':ratio>0.8?' warn':'');
+
+  ['p','f','c'].forEach(function(k){
+    var val = t[k];
+    var tgt = PFC_TARGETS[k];
+    var pct = Math.min((val/tgt.scale)*100,100);
+    document.getElementById('fill'+k.toUpperCase()).style.height = pct+'%';
+    document.getElementById('val'+k.toUpperCase()).textContent = Math.round(val)+'g';
+  });
+}
+
+// Stats update WITH sound feedback
+function updateStatsWithSound() {
+  var t = recalcTotals();
+  updateStatsImmediate();
+
+  // Check PFC zone transitions
+  ['p','f','c'].forEach(function(k){
+    var val = t[k];
+    var tgt = PFC_TARGETS[k];
+    var inZone = val >= tgt.min && val <= tgt.max;
+    var overMax = val > tgt.max;
+
+    // Newly entered target zone!
+    if (inZone && !prevPFCStatus[k]) {
+      SE.achieve();
+    }
+    // Exceeded max
+    if (overMax && !prevPFCStatus[k+'_over']) {
+      SE.warn();
+    }
+    prevPFCStatus[k] = inZone;
+    prevPFCStatus[k+'_over'] = overMax;
+  });
+}
+
+// ============================================================
+// History
+// ============================================================
+function addHistoryChip(food, recordPos) {
+  var tray = document.getElementById('history');
+  var chip = document.createElement('span');
+  chip.className = 'history-chip';
+  chip.textContent = food.emoji;
+  chip.dataset.pos = recordPos;
+  chip.title = food.name + ' ' + food.unit;
+  chip.addEventListener('click', function(){ removeRecordAt(chip); });
+  tray.appendChild(chip);
+}
+function rebuildHistory() {
+  var tray = document.getElementById('history');
+  tray.querySelectorAll('.history-chip').forEach(function(c){c.remove();});
+  dayRecords.forEach(function(idx, pos){ addHistoryChip(FOODS[idx], pos); });
+}
+function removeRecordAt(chip) {
+  var pos = parseInt(chip.dataset.pos, 10);
+  if (isNaN(pos) || pos < 0 || pos >= dayRecords.length) return;
+  SE.undo();
+  if (navigator.vibrate) navigator.vibrate(15);
+  // Animate chip removal
+  chip.classList.add('removing');
+  setTimeout(function(){
+    // Remove the record at position
+    dayRecords.splice(pos, 1);
+    saveDay(currentDate, dayRecords);
+    updateStatsImmediate();
+    // Rebuild to fix positions
+    rebuildHistory();
+  }, 350);
+}
+
+// ============================================================
+// Undo
+// ============================================================
+function undoLast() {
+  if(!dayRecords.length) return;
+  SE.undo();
+  dayRecords.pop();
+  saveDay(currentDate, dayRecords);
+  updateStatsImmediate();
+  var tray = document.getElementById('history');
+  var chips = tray.querySelectorAll('.history-chip');
+  if(chips.length) chips[chips.length-1].remove();
+  if(navigator.vibrate) navigator.vibrate(15);
+}
+
+// ============================================================
+// Calendar popup
+// ============================================================
+function showCalendar() {
+  calViewDate = new Date(currentDate);
+  renderCalendar();
+  document.getElementById('calOverlay').classList.add('show');
+}
+function hideCalendar() {
+  document.getElementById('calOverlay').classList.remove('show');
+}
+function calNav(delta) {
+  calViewDate.setMonth(calViewDate.getMonth()+delta);
+  renderCalendar();
+}
+function renderCalendar() {
+  var y=calViewDate.getFullYear(), m=calViewDate.getMonth();
+  document.getElementById('calTitle').textContent = y+'年'+(m+1)+'月';
+  var grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['日','月','火','水','木','金','土'].forEach(function(d){
+    var dow = document.createElement('div');
+    dow.className='cal-dow'; dow.textContent=d; grid.appendChild(dow);
+  });
+  var first = new Date(y,m,1);
+  var lastDay = new Date(y,m+1,0).getDate();
+  var startDow = first.getDay();
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  for(var i=0;i<startDow;i++){
+    var empty = document.createElement('div');
+    grid.appendChild(empty);
+  }
+  for(var d=1;d<=lastDay;d++){
+    var cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+    var cellDate = new Date(y,m,d);
+    cellDate.setHours(0,0,0,0);
+    if(cellDate.getTime()===today.getTime()) cell.classList.add('today');
+    if(cellDate.getTime()===currentDate.getTime()) cell.classList.add('selected');
+    var rec = loadDay(cellDate);
+    if(rec.length>0) cell.classList.add('has-record');
+    (function(dd){
+      cell.onclick = function(){
+        currentDate = new Date(y,m,dd);
+        currentDate.setHours(0,0,0,0);
+        hideCalendar();
+        loadCurrentDay();
+      };
+    })(d);
+    grid.appendChild(cell);
+  }
+}
+
+// ============================================================
+// Summary screen
+// ============================================================
+function showSummary() {
+  SE.whoosh();
+  renderWeekSummary();
+  document.getElementById('recordScreen').classList.remove('active');
+  document.getElementById('recordScreen').classList.add('hidden-left');
+  document.getElementById('summaryScreen').classList.remove('hidden-right');
+  document.getElementById('summaryScreen').classList.add('active');
+}
+function hideSummary() {
+  SE.whoosh();
+  document.getElementById('summaryScreen').classList.remove('active');
+  document.getElementById('summaryScreen').classList.add('hidden-right');
+  document.getElementById('recordScreen').classList.remove('hidden-left');
+  document.getElementById('recordScreen').classList.add('active');
+}
+
+function setPeriod(period, btn) {
+  SE.tick();
+  document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if(period==='week') renderWeekSummary();
+  else renderMonthSummary();
+}
+
+function getDayStats(d) {
+  var recs = loadDay(d);
+  if(!recs.length) return null;
+  var t = {kcal:0,p:0,f:0,c:0,count:recs.length};
+  recs.forEach(function(idx){
+    var food = FOODS[idx];
+    t.kcal+=food.kcal; t.p+=food.p; t.f+=food.f; t.c+=food.c;
+  });
+  return t;
+}
+
+function pfcStatus(stats) {
+  if(!stats) return {p:false,f:false,c:false,perfect:false,score:0};
+  var pOk = stats.p>=PFC_TARGETS.p.min && stats.p<=PFC_TARGETS.p.max;
+  var fOk = stats.f>=PFC_TARGETS.f.min && stats.f<=PFC_TARGETS.f.max;
+  var cOk = stats.c>=PFC_TARGETS.c.min && stats.c<=PFC_TARGETS.c.max;
+  return {p:pOk, f:fOk, c:cOk, perfect:pOk&&fOk&&cOk, score:(pOk?1:0)+(fOk?1:0)+(cOk?1:0)};
+}
+
+function auroraBg(status, stats) {
+  if(!stats) return '#e0e0e0';
+  if(status.perfect) {
+    return 'conic-gradient(from 0deg,#e91e63,#ff9800,#4caf50,#2196f3,#e91e63)';
+  }
+  var colors = [];
+  if(status.p) colors.push('#e91e63');
+  if(status.f) colors.push('#ff9800');
+  if(status.c) colors.push('#4caf50');
+  if(colors.length===0) {
+    // Gray with slight color hints
+    var pRatio = Math.min(stats.p/PFC_TARGETS.p.min,1);
+    var fRatio = Math.min(stats.f/PFC_TARGETS.f.min,1);
+    var cRatio = Math.min(stats.c/PFC_TARGETS.c.min,1);
+    var avg = (pRatio+fRatio+cRatio)/3;
+    return 'linear-gradient(135deg,hsl(0,0%,'+Math.round(65+avg*20)+'%),hsl(0,0%,'+Math.round(75+avg*15)+'%))';
+  }
+  if(colors.length===1) return 'radial-gradient(circle,'+colors[0]+'88,'+colors[0]+'44)';
+  return 'linear-gradient(135deg,'+colors.join(',')+')';
+}
+
+function renderWeekSummary() {
+  var body = document.getElementById('summaryBody');
+  var today = new Date(); today.setHours(0,0,0,0);
+  // Get this week (Mon-Sun)
+  var dow = today.getDay();
+  var mondayOffset = dow === 0 ? -6 : 1-dow;
+  var monday = new Date(today.getTime()+mondayOffset*86400000);
+
+  var weekDays = [];
+  var perfectCount=0, streak=0, maxStreak=0, totalKcal=0, totalP=0, totalF=0, totalC=0, recordDays=0;
+
+  for(var i=0;i<7;i++){
+    var d = new Date(monday.getTime()+i*86400000);
+    d.setHours(0,0,0,0);
+    var stats = getDayStats(d);
+    var status = pfcStatus(stats);
+    var isFuture = d>today;
+    weekDays.push({date:d,stats:stats,status:status,isFuture:isFuture,isToday:d.getTime()===today.getTime()});
+    if(stats){
+      totalKcal+=stats.kcal; totalP+=stats.p; totalF+=stats.f; totalC+=stats.c;
+      recordDays++;
+      if(status.perfect) perfectCount++;
+    }
+  }
+
+  // Count streak backwards from today
+  var checkDate = new Date(today);
+  while(true){
+    var s = getDayStats(checkDate);
+    if(!s) break;
+    streak++;
+    checkDate = new Date(checkDate.getTime()-86400000);
+  }
+
+  var html = '';
+
+  // Week aurora balls
+  html += '<div class="week-row">';
+  weekDays.forEach(function(wd){
+    var dayName = DAYS[wd.date.getDay()];
+    var cls = 'aurora-ball';
+    var bg;
+    if(wd.isFuture){cls+=' future'; bg='#f5f5f5';}
+    else if(!wd.stats){cls+=' empty'; bg='#e0e0e0';}
+    else {
+      if(wd.status.perfect) cls+=' perfect';
+      else if(wd.status.score>=2) cls+=' good';
+      bg = auroraBg(wd.status, wd.stats);
+    }
+    html += '<div class="day-col">';
+    html += '<div class="day-label'+(wd.isToday?' today':'')+'">'+dayName+'</div>';
+    html += '<div class="'+cls+'" style="background:'+bg+'"></div>';
+    html += '<div class="day-kcal">'+(wd.stats?wd.stats.kcal:'—')+'</div>';
+    // Mini PFC bars
+    if(wd.stats){
+      html += '<div class="day-detail-mini">';
+      ['p','f','c'].forEach(function(k){
+        var val = wd.stats[k];
+        var tgt = PFC_TARGETS[k];
+        var pct = Math.min(val/tgt.max*100,100);
+        var col = PFC_COLORS[k].main;
+        html += '<div class="mini-bar"><div class="mini-bar-fill" style="height:'+pct+'%;background:'+col+'"></div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Perfect counter
+  html += '<div class="perfect-counter">';
+  html += '<div class="perfect-num">'+perfectCount+'</div>';
+  html += '<div class="perfect-label">🌈 パーフェクトデー（今週）</div>';
+  html += '</div>';
+
+  // Streak
+  if(streak>0){
+    html += '<div style="text-align:center;margin-bottom:14px">';
+    html += '<span class="streak-badge">🔥 '+streak+'日連続記録中！</span>';
+    html += '</div>';
+  }
+
+  // Average stats
+  if(recordDays>0){
+    html += '<div class="stat-card">';
+    html += '<div class="stat-card-title">📈 今週の平均</div>';
+    var avgKcal = Math.round(totalKcal/recordDays);
+    var avgP = Math.round(totalP/recordDays);
+    var avgF = Math.round(totalF/recordDays);
+    var avgC = Math.round(totalC/recordDays);
+
+    html += '<div class="stat-row"><span class="stat-label">カロリー</span><div class="stat-bar"><div class="stat-bar-fill" style="width:'+Math.min(avgKcal/KCAL_TARGET*100,100)+'%;background:#66bb6a"></div></div><span class="stat-value">'+avgKcal+'</span></div>';
+
+    [['P たんぱく',avgP,PFC_TARGETS.p,'#e91e63'],['F 脂質',avgF,PFC_TARGETS.f,'#ff9800'],['C 炭水化物',avgC,PFC_TARGETS.c,'#4caf50']].forEach(function(item){
+      var pct = Math.min(item[1]/item[2].max*100,100);
+      html += '<div class="stat-row"><span class="stat-label">'+item[0]+'</span><div class="stat-bar"><div class="stat-bar-fill" style="width:'+pct+'%;background:'+item[3]+'"></div></div><span class="stat-value">'+item[1]+'g</span></div>';
+    });
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function renderMonthSummary() {
+  var body = document.getElementById('summaryBody');
+  var today = new Date(); today.setHours(0,0,0,0);
+  var y = today.getFullYear(), m = today.getMonth();
+  var lastDay = new Date(y,m+1,0).getDate();
+  var first = new Date(y,m,1);
+  var startDow = first.getDay();
+
+  var perfectCount=0, totalDays=0;
+  var monthData = [];
+
+  for(var d=1;d<=lastDay;d++){
+    var dd = new Date(y,m,d); dd.setHours(0,0,0,0);
+    var stats = getDayStats(dd);
+    var status = pfcStatus(stats);
+    var isFuture = dd>today;
+    monthData.push({day:d,stats:stats,status:status,isFuture:isFuture,isToday:dd.getTime()===today.getTime()});
+    if(stats){ totalDays++; if(status.perfect) perfectCount++; }
+  }
+
+  var html = '';
+
+  // Perfect counter
+  html += '<div class="perfect-counter">';
+  html += '<div class="perfect-num">'+perfectCount+'</div>';
+  html += '<div class="perfect-label">🌈 パーフェクトデー（今月）</div>';
+  html += '</div>';
+
+  // Month calendar
+  html += '<div class="stat-card">';
+  html += '<div class="stat-card-title">'+(m+1)+'月のカレンダー</div>';
+  html += '<div class="month-grid">';
+  ['日','月','火','水','木','金','土'].forEach(function(d){
+    html += '<div class="month-day" style="font-size:9px;font-weight:700;color:#90a4ae">'+d+'</div>';
+  });
+  for(var i=0;i<startDow;i++) html += '<div class="month-day"></div>';
+  monthData.forEach(function(md){
+    var ballBg = '';
+    if(md.isFuture) ballBg = 'background:rgba(0,0,0,0.03)';
+    else if(!md.stats) ballBg = 'background:rgba(0,0,0,0.04)';
+    else ballBg = 'background:'+auroraBg(md.status, md.stats);
+
+    var cls = 'month-day'+(md.stats?' has-data':'');
+    html += '<div class="'+cls+'">';
+    html += '<div class="month-day-ball'+(md.status.perfect?' perfect':'')+'" style="'+ballBg+'"></div>';
+    html += md.day;
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Legend
+  html += '<div class="stat-card">';
+  html += '<div class="stat-card-title">凡例</div>';
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#78909c">';
+  html += '<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:conic-gradient(#e91e63,#ff9800,#4caf50,#2196f3,#e91e63);vertical-align:middle"></span> パーフェクト</span>';
+  html += '<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,#e91e63,#ff9800);vertical-align:middle"></span> 2つ達成</span>';
+  html += '<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle,#4caf5088,#4caf5044);vertical-align:middle"></span> 1つ達成</span>';
+  html += '<span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ddd;vertical-align:middle"></span> 未達成</span>';
+  html += '</div></div>';
+
+  body.innerHTML = html;
+}
+
+// ============================================================
+// Init
+// ============================================================
+function init() {
+  initCanvas();
+  initZones();
+  initTabs();
+  loadCurrentDay();
+  createBubbles();
+  animLoop();
+}
+
+window.addEventListener('resize', function(){
+  W=window.innerWidth; H=window.innerHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+});
+
+init();
+</script>
+</body>
+</html>
