@@ -289,6 +289,53 @@ body{
 .pfc-item-bar{width:60px;height:5px;border-radius:3px;background:#eee;overflow:hidden}
 .pfc-item-bar-fill{height:100%;border-radius:3px}
 
+/* ===== Food detail popup (long-press) ===== */
+.food-detail-overlay{
+  position:fixed;inset:0;z-index:310;
+  background:rgba(0,0,0,0.35);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.food-detail-overlay.show{opacity:1;pointer-events:auto}
+.food-detail-card{
+  background:#fff;border-radius:22px;padding:20px 22px 22px;
+  width:85%;max-width:320px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  transform:scale(0.85);transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.food-detail-overlay.show .food-detail-card{transform:scale(1)}
+.food-detail-emoji{font-size:52px;text-align:center;margin-bottom:4px}
+.food-detail-name{font-size:18px;font-weight:900;text-align:center;color:#37474f;margin-bottom:2px}
+.food-detail-unit{font-size:12px;color:#90a4ae;text-align:center;font-weight:600;margin-bottom:12px}
+.food-detail-kcal{
+  text-align:center;margin-bottom:14px;
+  font-size:32px;font-weight:900;color:#43a047;
+}
+.food-detail-kcal span{font-size:14px;font-weight:600;color:#999}
+.food-detail-pfc{
+  display:flex;gap:8px;margin-bottom:16px;
+}
+.food-detail-pfc-item{
+  flex:1;text-align:center;padding:10px 4px;
+  border-radius:14px;background:rgba(0,0,0,0.03);
+}
+.food-detail-pfc-label{font-size:9px;font-weight:700;margin-bottom:3px}
+.food-detail-pfc-val{font-size:18px;font-weight:900}
+.food-detail-pfc-unit{font-size:9px;font-weight:600;color:#aaa}
+.food-detail-bar{
+  height:10px;border-radius:5px;overflow:hidden;
+  display:flex;margin-bottom:14px;background:#f5f5f5;
+}
+.food-detail-bar-seg{height:100%;transition:width .4s}
+.food-detail-add{
+  width:100%;padding:12px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#66bb6a,#43a047);
+  color:#fff;font-size:14px;font-weight:800;
+  cursor:pointer;letter-spacing:1px;
+  box-shadow:0 4px 12px rgba(67,160,71,0.3);
+}
+.food-detail-add:active{transform:scale(0.97);opacity:0.9}
+
 /* =============================================== */
 /* ===== WEEKLY SUMMARY SCREEN ===== */
 /* =============================================== */
@@ -638,6 +685,11 @@ body{
 <!-- ==================== PFC BREAKDOWN POPUP ==================== -->
 <div class="pfc-overlay" id="pfcOverlay" onclick="if(event.target===this)hidePFCBreakdown()">
   <div class="pfc-popup" id="pfcPopup"></div>
+</div>
+
+<!-- ==================== FOOD DETAIL POPUP (long-press) ==================== -->
+<div class="food-detail-overlay" id="foodDetailOverlay" onclick="if(event.target===this)hideFoodDetail()">
+  <div class="food-detail-card" id="foodDetailCard"></div>
 </div>
 
 <!-- ==================== SETTINGS POPUP ==================== -->
@@ -1490,8 +1542,27 @@ function makeBubbleEl(foodIdx, food, x, y, size, isGrid) {
       '<span class="bubble-name" style="font-size:'+nameS+'px">'+food.name+'</span>'+
       '<span class="bubble-kcal" style="font-size:'+kcalS+'px">'+food.kcal+'kcal</span>'+
     '</div>';
+  // Long-press detection
+  var longPressTimer = null;
+  var longPressed = false;
+  el.addEventListener('touchstart', function(e){
+    longPressed = false;
+    longPressTimer = setTimeout(function(){
+      longPressed = true;
+      if (navigator.vibrate) navigator.vibrate(20);
+      showFoodDetail(foodIdx);
+    }, 500);
+  }, {passive:true});
+  el.addEventListener('touchmove', function(){
+    clearTimeout(longPressTimer);
+  }, {passive:true});
+  el.addEventListener('touchend', function(){
+    clearTimeout(longPressTimer);
+  }, {passive:true});
+
   el.addEventListener('click', function(e){
     if (Date.now() - lastDragEndTime < 300) return;
+    if (longPressed) { longPressed = false; return; }
     popBubble(e,el,food,foodIdx);
   });
   el.dataset.foodIndex = foodIdx;
@@ -1770,6 +1841,100 @@ function showPFCBreakdown(key) {
 
 function hidePFCBreakdown() {
   document.getElementById('pfcOverlay').classList.remove('show');
+}
+
+// ============================================================
+// Food Detail Popup (long-press)
+// ============================================================
+function showFoodDetail(foodIdx) {
+  SE.tick();
+  var food = FOODS[foodIdx];
+  var overlay = document.getElementById('foodDetailOverlay');
+  var card = document.getElementById('foodDetailCard');
+
+  // Kcal breakdown from PFC
+  var pKcal = food.p * 4;
+  var fKcal = food.f * 9;
+  var cKcal = food.c * 4;
+  var totalPFC = pKcal + fKcal + cKcal;
+  var pPct = totalPFC > 0 ? Math.round(pKcal / totalPFC * 100) : 0;
+  var fPct = totalPFC > 0 ? Math.round(fKcal / totalPFC * 100) : 0;
+  var cPct = 100 - pPct - fPct;
+
+  var html = '';
+  html += '<div class="food-detail-emoji">'+food.emoji+'</div>';
+  html += '<div class="food-detail-name">'+food.name+'</div>';
+  html += '<div class="food-detail-unit">'+food.unit+'</div>';
+  html += '<div class="food-detail-kcal">'+food.kcal+' <span>kcal</span></div>';
+
+  // PFC bars
+  html += '<div class="food-detail-pfc">';
+  html += '<div class="food-detail-pfc-item">';
+  html += '<div class="food-detail-pfc-label" style="color:#e91e63">P たんぱく質</div>';
+  html += '<div class="food-detail-pfc-val" style="color:#e91e63">'+food.p+'<span class="food-detail-pfc-unit">g</span></div>';
+  html += '<div style="font-size:8px;color:#bbb">'+Math.round(pKcal)+' kcal ('+pPct+'%)</div>';
+  html += '</div>';
+  html += '<div class="food-detail-pfc-item">';
+  html += '<div class="food-detail-pfc-label" style="color:#ff9800">F 脂質</div>';
+  html += '<div class="food-detail-pfc-val" style="color:#ff9800">'+food.f+'<span class="food-detail-pfc-unit">g</span></div>';
+  html += '<div style="font-size:8px;color:#bbb">'+Math.round(fKcal)+' kcal ('+fPct+'%)</div>';
+  html += '</div>';
+  html += '<div class="food-detail-pfc-item">';
+  html += '<div class="food-detail-pfc-label" style="color:#4caf50">C 炭水化物</div>';
+  html += '<div class="food-detail-pfc-val" style="color:#4caf50">'+food.c+'<span class="food-detail-pfc-unit">g</span></div>';
+  html += '<div style="font-size:8px;color:#bbb">'+Math.round(cKcal)+' kcal ('+cPct+'%)</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // PFC ratio bar
+  html += '<div class="food-detail-bar">';
+  html += '<div class="food-detail-bar-seg" style="width:'+pPct+'%;background:#e91e63"></div>';
+  html += '<div class="food-detail-bar-seg" style="width:'+fPct+'%;background:#ff9800"></div>';
+  html += '<div class="food-detail-bar-seg" style="width:'+cPct+'%;background:#4caf50"></div>';
+  html += '</div>';
+
+  // Add button
+  html += '<button class="food-detail-add" onclick="addFromDetail('+foodIdx+')">＋ 記録する</button>';
+
+  card.innerHTML = html;
+  overlay.classList.add('show');
+}
+
+function hideFoodDetail() {
+  document.getElementById('foodDetailOverlay').classList.remove('show');
+}
+
+function addFromDetail(foodIdx) {
+  hideFoodDetail();
+  var food = FOODS[foodIdx];
+  SE.pop();
+  SE.sparkle(400);
+
+  // Toast
+  var toast = document.createElement('div');
+  toast.className = 'kcal-toast';
+  toast.textContent = '+'+food.kcal+' kcal';
+  toast.style.left = (W/2)+'px';
+  toast.style.top = (H/2)+'px';
+  toast.style.color = '#555';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 1200);
+
+  spawnPFCParticles(W/2, H/3, food);
+
+  dayRecords.push(foodIdx);
+  saveDay(currentDate, dayRecords);
+  recordUsage(foodIdx);
+
+  setTimeout(function(){ updateStatsWithSound(); }, 500);
+  addHistoryChip(food, dayRecords.length - 1);
+
+  var btn = document.getElementById('undoBtn');
+  btn.classList.add('show');
+  clearTimeout(btn._timeout);
+  btn._timeout = setTimeout(function(){ btn.classList.remove('show'); }, 5000);
+
+  if (navigator.vibrate) navigator.vibrate(30);
 }
 
 // ============================================================
@@ -2302,9 +2467,21 @@ function showSearchResults(results, query) {
   // Hide bubbles during search
   document.getElementById('bubbleLayer').style.display = 'none';
 
-  // Add click handlers
+  // Add click + long-press handlers
   container.querySelectorAll('.search-result-item').forEach(function(item) {
+    var lpTimer = null, lp = false;
+    item.addEventListener('touchstart', function(){
+      lp = false;
+      lpTimer = setTimeout(function(){
+        lp = true;
+        if (navigator.vibrate) navigator.vibrate(20);
+        showFoodDetail(parseInt(item.dataset.idx));
+      }, 500);
+    }, {passive:true});
+    item.addEventListener('touchmove', function(){ clearTimeout(lpTimer); }, {passive:true});
+    item.addEventListener('touchend', function(){ clearTimeout(lpTimer); }, {passive:true});
     item.addEventListener('click', function() {
+      if (lp) { lp = false; return; }
       var idx = parseInt(item.dataset.idx);
       selectFoodFromSearch(idx);
     });
