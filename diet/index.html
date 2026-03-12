@@ -52,7 +52,8 @@ body{
 
 /* Jars row */
 .jars-row{display:flex;justify-content:center;gap:14px;padding:4px 0 8px}
-.jar{display:flex;flex-direction:column;align-items:center;position:relative}
+.jar{display:flex;flex-direction:column;align-items:center;position:relative;cursor:pointer}
+.jar:active .tube{border-color:#aaa}
 .jar-label{font-size:8px;font-weight:800;margin-bottom:1px;letter-spacing:0.5px}
 .jar-label.p-label{color:#e91e63}
 .jar-label.f-label{color:#ff9800}
@@ -63,6 +64,7 @@ body{
   border-radius:0 0 18px 18px;
   position:relative;overflow:hidden;
   background:rgba(255,255,255,0.5);
+  transition:border-color .2s;
 }
 .tube-top{width:44px;height:5px;background:#bbb;border-radius:3px;margin-bottom:-1px;position:relative;z-index:2}
 .tube-fill{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 15px 15px;transition:height 0.8s cubic-bezier(0.34,1.56,0.64,1)}
@@ -99,6 +101,61 @@ body{
 }
 .cat-tab.active{background:#fff;color:#43a047;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
 .cat-tab:active{transform:scale(0.95)}
+
+/* ===== Search bar ===== */
+.search-bar{
+  position:absolute;top:210px;left:8px;right:8px;z-index:89;
+  display:flex;gap:6px;align-items:center;
+}
+.search-input{
+  flex:1;height:32px;border:1.5px solid rgba(0,0,0,0.08);border-radius:14px;
+  padding:0 12px 0 30px;font-size:12px;font-weight:600;color:#546e7a;
+  background:rgba(255,255,255,0.7);outline:none;font-family:inherit;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.search-input:focus{border-color:#66bb6a;background:rgba(255,255,255,0.9)}
+.search-input::placeholder{color:#b0bec5}
+.search-icon{
+  position:absolute;left:18px;top:50%;transform:translateY(-50%);
+  font-size:12px;pointer-events:none;color:#b0bec5;
+}
+.search-clear{
+  width:26px;height:26px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.06);font-size:11px;cursor:pointer;
+  display:none;align-items:center;justify-content:center;color:#90a4ae;
+}
+.search-clear.show{display:flex}
+.search-clear:active{background:rgba(0,0,0,0.12)}
+
+/* ===== Search results list ===== */
+.search-results{
+  position:absolute;top:248px;left:0;right:0;bottom:42px;z-index:25;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:4px 10px;display:none;
+}
+.search-results.show{display:block}
+.search-result-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.75);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  border-radius:14px;padding:10px 12px;margin-bottom:6px;
+  cursor:pointer;transition:transform .1s,background .15s;
+  box-shadow:0 1px 6px rgba(0,0,0,0.04);
+}
+.search-result-item:active{transform:scale(0.98);background:rgba(255,255,255,0.95)}
+.search-result-emoji{font-size:26px;width:36px;text-align:center;flex-shrink:0}
+.search-result-info{flex:1;min-width:0}
+.search-result-name{font-size:13px;font-weight:700;color:#37474f}
+.search-result-detail{font-size:9px;color:#b0bec5;font-weight:600;margin-top:1px}
+.search-result-kcal{font-size:15px;font-weight:900;color:#43a047;flex-shrink:0}
+.search-result-pfc{
+  display:flex;gap:3px;margin-top:2px;
+}
+.search-result-pfc span{
+  font-size:8px;font-weight:700;padding:1px 4px;border-radius:4px;
+}
+.search-no-result{text-align:center;padding:30px;color:#ccc;font-size:12px;font-weight:600}
+.search-count{font-size:9px;color:#b0bec5;font-weight:600;padding:2px 8px}
 
 /* ===== Canvas ===== */
 #mainCanvas{position:fixed;top:0;left:0;z-index:10;pointer-events:none}
@@ -154,16 +211,9 @@ body{
   position:relative;
 }
 .history-chip:active{transform:scale(0.85);background:rgba(233,30,99,0.15)}
-.history-chip.removing{
-  animation:chipOut .35s ease-in forwards;
-  pointer-events:none;
-}
+.history-chip.removing{animation:chipOut .35s ease-in forwards;pointer-events:none}
 @keyframes chipIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
-@keyframes chipOut{
-  0%{transform:scale(1);opacity:1}
-  30%{transform:scale(1.15);opacity:1}
-  100%{transform:scale(0) translateY(-20px);opacity:0}
-}
+@keyframes chipOut{0%{transform:scale(1);opacity:1}30%{transform:scale(1.15);opacity:1}100%{transform:scale(0) translateY(-20px);opacity:0}}
 
 /* Nav buttons */
 .nav-btn{
@@ -178,6 +228,66 @@ body{
 .undo-btn{bottom:50px;right:10px;opacity:0;transition:opacity .3s;pointer-events:none}
 .undo-btn.show{opacity:1;pointer-events:auto}
 .summary-btn{bottom:50px;left:10px}
+.settings-btn{bottom:90px;left:10px;font-size:16px}
+
+/* ===== Swipe indicator ===== */
+.swipe-hint{
+  position:absolute;top:50%;z-index:60;
+  font-size:11px;font-weight:700;color:rgba(0,0,0,0.15);
+  pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.swipe-hint.left{left:8px;transform:translateY(-50%)}
+.swipe-hint.right{right:8px;transform:translateY(-50%)}
+.swipe-hint.show{opacity:1}
+
+/* ===== PFC Breakdown Popup ===== */
+.pfc-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.35);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.pfc-overlay.show{opacity:1;pointer-events:auto}
+.pfc-popup{
+  background:#fff;border-radius:20px 20px 0 0;padding:16px 16px 24px;
+  width:100%;max-width:420px;max-height:60vh;
+  box-shadow:0 -10px 40px rgba(0,0,0,0.15);
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.pfc-overlay.show .pfc-popup{transform:translateY(0)}
+.pfc-popup-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;
+}
+.pfc-popup-title{font-size:15px;font-weight:800}
+.pfc-popup-close{
+  width:28px;height:28px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.06);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.pfc-popup-close:active{background:rgba(0,0,0,0.12)}
+.pfc-popup-summary{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;padding:8px 12px;
+  background:rgba(0,0,0,0.03);border-radius:12px;
+}
+.pfc-summary-num{font-size:24px;font-weight:900}
+.pfc-summary-target{font-size:11px;color:#90a4ae;font-weight:600}
+.pfc-summary-bar{flex:1;height:8px;border-radius:4px;background:#eee;overflow:hidden}
+.pfc-summary-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.pfc-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 4px;border-bottom:1px solid rgba(0,0,0,0.04);
+}
+.pfc-item:last-child{border-bottom:none}
+.pfc-item-emoji{font-size:20px;width:28px;text-align:center}
+.pfc-item-info{flex:1}
+.pfc-item-name{font-size:12px;font-weight:700;color:#546e7a}
+.pfc-item-detail{font-size:9px;color:#b0bec5;font-weight:600}
+.pfc-item-val{font-size:14px;font-weight:800;text-align:right;min-width:50px}
+.pfc-item-bar{width:60px;height:5px;border-radius:3px;background:#eee;overflow:hidden}
+.pfc-item-bar-fill{height:100%;border-radius:3px}
 
 /* =============================================== */
 /* ===== WEEKLY SUMMARY SCREEN ===== */
@@ -346,6 +456,82 @@ body{
   content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:#66bb6a;
 }
+
+/* ===== Settings overlay ===== */
+.settings-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.35);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.settings-overlay.show{opacity:1;pointer-events:auto}
+.settings-popup{
+  background:#fff;border-radius:20px;padding:18px;width:340px;max-height:85vh;
+  box-shadow:0 10px 40px rgba(0,0,0,0.15);
+  transform:scale(0.9);transition:transform .3s;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.settings-overlay.show .settings-popup{transform:scale(1)}
+.settings-title{font-size:15px;font-weight:800;color:#546e7a;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.settings-close{width:28px;height:28px;border:none;border-radius:50%;background:rgba(0,0,0,0.06);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.settings-close:active{background:rgba(0,0,0,0.12)}
+.settings-section{margin-bottom:14px}
+.settings-section-title{font-size:10px;font-weight:700;color:#90a4ae;margin-bottom:6px;letter-spacing:0.5px}
+.settings-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.settings-label{font-size:12px;font-weight:600;color:#546e7a;min-width:60px}
+.settings-input{
+  flex:1;height:34px;border:1.5px solid #e0e0e0;border-radius:10px;
+  padding:0 10px;font-size:14px;font-weight:700;color:#546e7a;
+  background:#fafafa;outline:none;text-align:center;
+  font-family:inherit;
+}
+.settings-input:focus{border-color:#66bb6a;background:#fff}
+.settings-unit{font-size:10px;color:#b0bec5;font-weight:600;min-width:24px}
+.settings-select{
+  flex:1;height:34px;border:1.5px solid #e0e0e0;border-radius:10px;
+  padding:0 8px;font-size:12px;font-weight:700;color:#546e7a;
+  background:#fafafa;outline:none;
+  font-family:inherit;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%2390a4ae' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  padding-right:24px;
+}
+.settings-select:focus{border-color:#66bb6a;background:#fff}
+.settings-calc-btn{
+  width:100%;height:38px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,#66bb6a,#43a047);
+  color:#fff;font-size:13px;font-weight:800;cursor:pointer;
+  font-family:inherit;box-shadow:0 3px 12px rgba(67,160,71,0.3);
+  transition:transform .15s;
+}
+.settings-calc-btn:active{transform:scale(0.97)}
+.settings-result{
+  background:linear-gradient(135deg,rgba(233,30,99,0.05),rgba(255,152,0,0.05),rgba(76,175,80,0.05));
+  border-radius:14px;padding:12px;margin-top:10px;
+}
+.settings-result-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 0;
+}
+.settings-result-label{font-size:11px;font-weight:600;color:#78909c}
+.settings-result-val{font-size:15px;font-weight:900}
+.settings-result-range{font-size:9px;color:#b0bec5;font-weight:600}
+.settings-divider{height:1px;background:#eee;margin:10px 0}
+.settings-manual-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.settings-manual-label{font-size:11px;font-weight:700;min-width:70px}
+.settings-manual-input{
+  width:55px;height:30px;border:1.5px solid #e0e0e0;border-radius:8px;
+  padding:0 6px;font-size:13px;font-weight:700;color:#546e7a;
+  background:#fafafa;outline:none;text-align:center;font-family:inherit;
+}
+.settings-manual-input:focus{border-color:#66bb6a;background:#fff}
+.settings-apply-btn{
+  width:100%;height:36px;border:2px solid #43a047;border-radius:12px;
+  background:transparent;color:#43a047;font-size:12px;font-weight:800;
+  cursor:pointer;font-family:inherit;margin-top:8px;transition:all .15s;
+}
+.settings-apply-btn:active{background:#43a047;color:#fff;transform:scale(0.97)}
+.settings-reference{font-size:9px;color:#b0bec5;line-height:1.5;margin-top:8px}
 </style>
 </head>
 <body>
@@ -367,19 +553,19 @@ body{
       </div>
     </div>
     <div class="jars-row">
-      <div class="jar" id="jarP">
+      <div class="jar" id="jarP" onclick="showPFCBreakdown('p')">
         <div class="jar-label p-label">P たんぱく</div>
         <div class="tube-top"></div>
         <div class="tube" id="tubeP"><div class="tube-zone" id="zoneP"></div><div class="tube-fill p-fill" id="fillP" style="height:0%"></div><div class="tube-particles" id="particlesP"></div></div>
         <div class="tube-val" id="valP">0g</div>
       </div>
-      <div class="jar" id="jarF">
+      <div class="jar" id="jarF" onclick="showPFCBreakdown('f')">
         <div class="jar-label f-label">F 脂質</div>
         <div class="tube-top"></div>
         <div class="tube" id="tubeF"><div class="tube-zone" id="zoneF"></div><div class="tube-fill f-fill" id="fillF" style="height:0%"></div><div class="tube-particles" id="particlesF"></div></div>
         <div class="tube-val" id="valF">0g</div>
       </div>
-      <div class="jar" id="jarC">
+      <div class="jar" id="jarC" onclick="showPFCBreakdown('c')">
         <div class="jar-label c-label">C 炭水化物</div>
         <div class="tube-top"></div>
         <div class="tube" id="tubeC"><div class="tube-zone" id="zoneC"></div><div class="tube-fill c-fill" id="fillC" style="height:0%"></div><div class="tube-particles" id="particlesC"></div></div>
@@ -391,11 +577,25 @@ body{
   <!-- Category tabs -->
   <div class="cat-tabs" id="catTabs"></div>
 
+  <!-- Search bar -->
+  <div class="search-bar" id="searchBar">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="searchInput" type="text" placeholder="食品を検索..." autocomplete="off">
+    <button class="search-clear" id="searchClear">✕</button>
+  </div>
+
+  <!-- Search results -->
+  <div class="search-results" id="searchResults"></div>
+
   <!-- Canvas -->
   <canvas id="mainCanvas"></canvas>
 
   <!-- Bubble layer -->
   <div class="bubble-layer" id="bubbleLayer"></div>
+
+  <!-- Swipe hints -->
+  <div class="swipe-hint left" id="swipeL">◀</div>
+  <div class="swipe-hint right" id="swipeR">▶</div>
 
   <!-- History -->
   <div class="history" id="history">
@@ -406,6 +606,8 @@ body{
   <button class="nav-btn undo-btn" id="undoBtn" onclick="undoLast()">↩️</button>
   <!-- Summary -->
   <button class="nav-btn summary-btn" onclick="showSummary()">📊</button>
+  <!-- Settings -->
+  <button class="nav-btn settings-btn" onclick="showSettings()">⚙️</button>
 </div>
 
 <!-- ==================== SUMMARY SCREEN ==================== -->
@@ -433,6 +635,108 @@ body{
   </div>
 </div>
 
+<!-- ==================== PFC BREAKDOWN POPUP ==================== -->
+<div class="pfc-overlay" id="pfcOverlay" onclick="if(event.target===this)hidePFCBreakdown()">
+  <div class="pfc-popup" id="pfcPopup"></div>
+</div>
+
+<!-- ==================== SETTINGS POPUP ==================== -->
+<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this)hideSettings()">
+  <div class="settings-popup">
+    <div class="settings-title">
+      <span>⚙️ 目標設定</span>
+      <button class="settings-close" onclick="hideSettings()">✕</button>
+    </div>
+
+    <!-- Auto calc section -->
+    <div class="settings-section">
+      <div class="settings-section-title">📐 からだの情報（自動計算）</div>
+      <div class="settings-row">
+        <span class="settings-label">性別</span>
+        <select class="settings-select" id="setSex">
+          <option value="male">男性</option>
+          <option value="female">女性</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">年齢</span>
+        <input class="settings-input" id="setAge" type="number" inputmode="numeric" placeholder="35" value="">
+        <span class="settings-unit">歳</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">身長</span>
+        <input class="settings-input" id="setHeight" type="number" inputmode="decimal" placeholder="170" value="">
+        <span class="settings-unit">cm</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">体重</span>
+        <input class="settings-input" id="setWeight" type="number" inputmode="decimal" placeholder="70" value="">
+        <span class="settings-unit">kg</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">活動量</span>
+        <select class="settings-select" id="setActivity">
+          <option value="1.2">座り仕事メイン</option>
+          <option value="1.375">軽い運動あり</option>
+          <option value="1.55" selected>ふつう</option>
+          <option value="1.725">よく運動する</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">目的</span>
+        <select class="settings-select" id="setGoal">
+          <option value="300">ゆるやかに痩せる（-300kcal）</option>
+          <option value="500" selected>しっかり痩せる（-500kcal）</option>
+          <option value="700">ストイックに（-700kcal）</option>
+          <option value="0">体重維持</option>
+        </select>
+      </div>
+      <button class="settings-calc-btn" onclick="calcTargets()">🧮 自動計算する</button>
+      <div id="calcResult"></div>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <!-- Manual override section -->
+    <div class="settings-section">
+      <div class="settings-section-title">✏️ 手動で目標を設定</div>
+      <div class="settings-manual-row">
+        <span class="settings-manual-label">🔥 カロリー</span>
+        <input class="settings-manual-input" id="manKcal" type="number" inputmode="numeric">
+        <span class="settings-unit">kcal</span>
+      </div>
+      <div class="settings-manual-row">
+        <span class="settings-manual-label" style="color:#e91e63">P たんぱく</span>
+        <input class="settings-manual-input" id="manPMin" type="number" inputmode="numeric">
+        <span class="settings-unit">〜</span>
+        <input class="settings-manual-input" id="manPMax" type="number" inputmode="numeric">
+        <span class="settings-unit">g</span>
+      </div>
+      <div class="settings-manual-row">
+        <span class="settings-manual-label" style="color:#ff9800">F 脂質</span>
+        <input class="settings-manual-input" id="manFMin" type="number" inputmode="numeric">
+        <span class="settings-unit">〜</span>
+        <input class="settings-manual-input" id="manFMax" type="number" inputmode="numeric">
+        <span class="settings-unit">g</span>
+      </div>
+      <div class="settings-manual-row">
+        <span class="settings-manual-label" style="color:#4caf50">C 炭水化物</span>
+        <input class="settings-manual-input" id="manCMin" type="number" inputmode="numeric">
+        <span class="settings-unit">〜</span>
+        <input class="settings-manual-input" id="manCMax" type="number" inputmode="numeric">
+        <span class="settings-unit">g</span>
+      </div>
+      <button class="settings-apply-btn" onclick="applyManualTargets()">この値を適用する</button>
+    </div>
+
+    <div class="settings-reference">
+      ※ 自動計算はMifflin-St Jeor式で基礎代謝を算出し、活動量を掛けた消費カロリーからダイエット分を引いています。<br>
+      P=体重×1.8g / F=体重×0.9g / C=残りカロリー÷4 で配分。<br>
+      厚労省「日本人の食事摂取基準2020」参考。
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // Sound Engine (Web Audio API - no external files needed)
@@ -445,7 +749,6 @@ function getAudioCtx() {
 }
 
 var SE = {
-  // Bubble pop - cute "pochi" sound
   pop: function() {
     var ctx = getAudioCtx();
     var osc = ctx.createOscillator();
@@ -457,9 +760,7 @@ var SE = {
     osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
     gain.gain.setValueAtTime(0.25, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
-    // Sub bubble burst
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
     var osc2 = ctx.createOscillator();
     var gain2 = ctx.createGain();
     osc2.connect(gain2); gain2.connect(ctx.destination);
@@ -468,11 +769,8 @@ var SE = {
     osc2.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
     gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.02);
     gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-    osc2.start(ctx.currentTime + 0.02);
-    osc2.stop(ctx.currentTime + 0.1);
+    osc2.start(ctx.currentTime + 0.02); osc2.stop(ctx.currentTime + 0.1);
   },
-
-  // Sparkle - particles arriving at tube
   sparkle: function(delay) {
     setTimeout(function(){
       var ctx = getAudioCtx();
@@ -486,13 +784,10 @@ var SE = {
         gain.gain.setValueAtTime(0, t + i * 0.06);
         gain.gain.linearRampToValueAtTime(0.08, t + i * 0.06 + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.12);
-        osc.start(t + i * 0.06);
-        osc.stop(t + i * 0.06 + 0.12);
+        osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.12);
       });
     }, delay || 0);
   },
-
-  // Undo - soft descending tone
   undo: function() {
     var ctx = getAudioCtx();
     var osc = ctx.createOscillator();
@@ -503,11 +798,8 @@ var SE = {
     osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.15, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.18);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.18);
   },
-
-  // Tab switch - light tick
   tick: function() {
     var ctx = getAudioCtx();
     var osc = ctx.createOscillator();
@@ -517,16 +809,12 @@ var SE = {
     osc.frequency.setValueAtTime(1000, ctx.currentTime);
     gain.gain.setValueAtTime(0.06, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.05);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.05);
   },
-
-  // Achievement - cute fanfare when PFC enters target zone
   achieve: function() {
     var ctx = getAudioCtx();
     var t = ctx.currentTime;
-    var notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
-    notes.forEach(function(freq, i) {
+    [523, 659, 784, 1047].forEach(function(freq, i) {
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
@@ -535,12 +823,9 @@ var SE = {
       gain.gain.setValueAtTime(0, t + i * 0.1);
       gain.gain.linearRampToValueAtTime(0.12, t + i * 0.1 + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.25);
-      osc.start(t + i * 0.1);
-      osc.stop(t + i * 0.1 + 0.25);
+      osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.25);
     });
   },
-
-  // Warning - gentle alert when exceeding max
   warn: function() {
     var ctx = getAudioCtx();
     var t = ctx.currentTime;
@@ -552,12 +837,9 @@ var SE = {
       osc.frequency.setValueAtTime(freq, t + i * 0.12);
       gain.gain.setValueAtTime(0.1, t + i * 0.12);
       gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.12);
-      osc.start(t + i * 0.12);
-      osc.stop(t + i * 0.12 + 0.12);
+      osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.12);
     });
   },
-
-  // Page transition - whoosh
   whoosh: function() {
     var ctx = getAudioCtx();
     var bufferSize = ctx.sampleRate * 0.15;
@@ -575,75 +857,216 @@ var SE = {
     gain.gain.setValueAtTime(0.08, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
     source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    source.start(ctx.currentTime);
-    source.stop(ctx.currentTime + 0.15);
+    source.start(ctx.currentTime); source.stop(ctx.currentTime + 0.15);
   },
 };
 
-// Track PFC zone status for achievement sounds
 var prevPFCStatus = { p: false, f: false, c: false };
 
 // ============================================================
-// Food Database with categories
+// Food Database — loaded from CSV
 // ============================================================
-var CATEGORIES = [
-  { id:'fav',    label:'⭐ よく使う',     ids:[0,3,8,4,9,13,20,5] },
-  { id:'staple', label:'🍚 主食',         ids:[0,1,2] },
-  { id:'protein',label:'🍖 たんぱく質',   ids:[3,4,5,6,7,8] },
-  { id:'veg',    label:'🥦 野菜・副菜',   ids:[9,10,11,12,13] },
-  { id:'drink',  label:'🥤 飲み物',       ids:[14,15,16,17] },
-  { id:'sauce',  label:'🍲 調味・汁物',   ids:[18,19,20] },
-  { id:'heavy',  label:'🍜 がっつり',     ids:[21,22] },
-  { id:'fruit',  label:'🍎 フルーツ',     ids:[23,24] },
-  { id:'all',    label:'📋 すべて',       ids:null },
-];
+var CATEGORIES = [];
+var FOODS = [];
+var FOOD_MAP = {}; // name → index in FOODS
+var BUBBLE_COLORS = [];
 
-var FOODS = [
-  // === 主食 ===
-  { emoji:'🍚', name:'ごはん',       unit:'50g',     kcal:78,  p:1.3,  f:0.2, c:18.5 },  // 0
-  { emoji:'🍞', name:'パン',         unit:'1枚',     kcal:260, p:9,    f:4,   c:46   },  // 1
-  { emoji:'🍙', name:'おにぎり',     unit:'1個',     kcal:180, p:3,    f:0.5, c:40   },  // 2
-  // === たんぱく質 ===
-  { emoji:'🥚', name:'たまご',       unit:'1個',     kcal:91,  p:7,    f:7,   c:0.2  },  // 3
-  { emoji:'🍗', name:'チキンバー',   unit:'1本',     kcal:65,  p:13,   f:1.2, c:0    },  // 4
-  { emoji:'🐟', name:'銀鮭',         unit:'1切',     kcal:150, p:16,   f:10,  c:0.2  },  // 5
-  { emoji:'🐡', name:'ブリ',         unit:'1切',     kcal:178, p:17,   f:14,  c:0.2  },  // 6
-  { emoji:'🥩', name:'牛肉',         unit:'100g',    kcal:250, p:20,   f:18,  c:0    },  // 7
-  { emoji:'🫘', name:'納豆',         unit:'1パック', kcal:80,  p:7.4,  f:4,   c:2.5  },  // 8
-  // === 野菜・副菜 ===
-  { emoji:'🥦', name:'ブロッコリー', unit:'50g',     kcal:17,  p:2.2,  f:0.3, c:2.6  },  // 9
-  { emoji:'🍄', name:'えのき',       unit:'50g',     kcal:11,  p:1.4,  f:0.1, c:3.7  },  // 10
-  { emoji:'🌱', name:'もやし',       unit:'100g',    kcal:14,  p:1.7,  f:0.1, c:2.6  },  // 11
-  { emoji:'🥗', name:'サラダ',       unit:'1皿',     kcal:30,  p:1,    f:0.2, c:6    },  // 12
-  { emoji:'🥬', name:'めかぶ',       unit:'1パック', kcal:7,   p:0.5,  f:0.2, c:1.4  },  // 13
-  // === 飲み物 ===
-  { emoji:'🍅', name:'トマトジュース', unit:'200ml', kcal:39,  p:1.8,  f:0,   c:8.7  },  // 14
-  { emoji:'🥛', name:'牛乳',         unit:'200ml',   kcal:138, p:7,    f:8,   c:10   },  // 15
-  { emoji:'☕', name:'コーヒー',     unit:'1杯',     kcal:6,   p:0.3,  f:0,   c:1    },  // 16
-  { emoji:'🧃', name:'ジュース',     unit:'200ml',   kcal:90,  p:0,    f:0,   c:23   },  // 17
-  // === 調味・汁物 ===
-  { emoji:'🍲', name:'キムチ鍋の元', unit:'1人前',   kcal:23,  p:1,    f:1,   c:2.4  },  // 18
-  { emoji:'🫗', name:'ポン酢',       unit:'大さじ1', kcal:15,  p:1,    f:0,   c:2    },  // 19
-  { emoji:'🥣', name:'味噌汁',       unit:'1杯',     kcal:30,  p:2,    f:0.8, c:3.5  },  // 20
-  // === がっつり ===
-  { emoji:'🍜', name:'ラーメン',     unit:'1杯',     kcal:470, p:18,   f:15,  c:65   },  // 21
-  { emoji:'🍛', name:'カレー',       unit:'1皿',     kcal:520, p:14,   f:12,  c:85   },  // 22
-  // === フルーツ ===
-  { emoji:'🍌', name:'バナナ',       unit:'1本',     kcal:86,  p:1,    f:0.2, c:22   },  // 23
-  { emoji:'🍎', name:'りんご',       unit:'1/2個',   kcal:57,  p:0.2,  f:0.1, c:15   },  // 24
-];
+var CATEGORY_LABELS = {
+  fav:'⭐ よく使う', staple:'🍚 主食', meat:'🍖 肉類',
+  fish:'🐟 魚介', egg_soy:'🥚 卵・大豆', protein:'💪 たんぱく質',
+  veg:'🥦 野菜', fruit:'🍎 フルーツ', drink:'🥤 飲み物',
+  dairy:'🧀 乳製品', soup:'🍲 汁物', snack:'🍫 おやつ',
+  seasoning:'🫗 調味料', meal:'🍽 定食・外食', heavy:'🍜 がっつり',
+  conbini:'🏪 コンビニ'
+};
+var CATEGORY_ORDER = ['fav','staple','protein','meat','fish','egg_soy','veg','fruit','drink','dairy','soup','seasoning','meal','heavy','snack','conbini'];
 
-var BUBBLE_COLORS = [
-  'rgba(255,200,200,0.35)','rgba(200,220,255,0.35)','rgba(255,245,200,0.35)',
-  'rgba(255,220,180,0.35)','rgba(200,240,255,0.35)','rgba(220,255,220,0.35)',
-  'rgba(255,230,200,0.35)','rgba(255,210,180,0.35)','rgba(240,240,255,0.35)',
-  'rgba(255,255,210,0.35)','rgba(255,210,210,0.35)','rgba(220,210,200,0.35)',
-  'rgba(245,245,245,0.35)','rgba(210,245,210,0.35)','rgba(255,220,220,0.35)',
-  'rgba(230,230,255,0.35)','rgba(245,235,220,0.35)','rgba(255,240,230,0.35)',
-  'rgba(220,240,230,0.35)','rgba(240,230,210,0.35)','rgba(255,245,235,0.35)',
-  'rgba(225,240,255,0.35)','rgba(255,225,200,0.35)','rgba(255,250,200,0.35)',
-  'rgba(240,220,230,0.35)',
+// Old food names for migration (v1 hardcoded indices 0-31)
+var OLD_FOOD_NAMES = [
+  'ごはん','パン','おにぎり','たまご','チキンバー','銀鮭','ブリ','牛肉',
+  '納豆','ブロッコリー','えのき','もやし','サラダ','めかぶ',
+  'トマトジュース','牛乳','コーヒー','ジュース',
+  'キムチ鍋の元','ポン酢','味噌汁','ラーメン','カレー',
+  'バナナ','りんご','給食','肉野菜炒め定食','レバニラ定食','生姜焼き定食',
+  'ソイプロテイン','ホエイプロテイン','無調整豆乳'
 ];
+var migrationMap = {};
+
+function parseCSVLine(line) {
+  var result = [];
+  var current = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function loadFoodsFromCSV() {
+  return fetch('foods.csv')
+    .then(function(res) { return res.text(); })
+    .then(function(text) {
+      var lines = text.trim().split('\n');
+      var categoryMap = {};
+
+      for (var i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        var cols = parseCSVLine(lines[i]);
+        if (cols.length < 8) continue;
+        var idx = FOODS.length;
+        var food = {
+          emoji: cols[0],
+          name: cols[1],
+          unit: cols[2],
+          kcal: parseFloat(cols[3]) || 0,
+          p: parseFloat(cols[4]) || 0,
+          f: parseFloat(cols[5]) || 0,
+          c: parseFloat(cols[6]) || 0
+        };
+        FOODS.push(food);
+        FOOD_MAP[food.name] = idx;
+
+        var cats = cols[7].split('|');
+        cats.forEach(function(catId) {
+          catId = catId.trim();
+          if (!catId) return;
+          if (!categoryMap[catId]) categoryMap[catId] = [];
+          categoryMap[catId].push(idx);
+        });
+      }
+
+      // Build CATEGORIES in defined order
+      CATEGORIES = [];
+      CATEGORY_ORDER.forEach(function(catId) {
+        if (categoryMap[catId] && categoryMap[catId].length > 0) {
+          CATEGORIES.push({
+            id: catId,
+            label: CATEGORY_LABELS[catId] || catId,
+            ids: categoryMap[catId]
+          });
+        }
+      });
+      CATEGORIES.push({ id:'all', label:'📋 すべて', ids:null });
+
+      // Generate bubble colors
+      var baseRGB = [
+        [255,200,200],[200,220,255],[255,245,200],[255,220,180],[200,240,255],
+        [220,255,220],[255,230,200],[255,210,180],[240,240,255],[255,255,210],
+        [255,210,210],[220,210,200],[245,245,245],[210,245,210],[255,220,220],
+        [230,230,255],[245,235,220],[255,240,230],[220,240,230],[240,230,210]
+      ];
+      BUBBLE_COLORS = [];
+      for (var j = 0; j < FOODS.length; j++) {
+        var c = baseRGB[j % baseRGB.length];
+        BUBBLE_COLORS.push('rgba('+c[0]+','+c[1]+','+c[2]+',0.35)');
+      }
+
+      // Build migration map (old v1 indices → new CSV indices)
+      buildMigrationMap();
+      migrateOldRecords();
+    });
+}
+
+function buildMigrationMap() {
+  OLD_FOOD_NAMES.forEach(function(oldName, oldIdx) {
+    // Exact match
+    if (FOOD_MAP[oldName] !== undefined) {
+      migrationMap[oldIdx] = FOOD_MAP[oldName];
+      return;
+    }
+    // Partial match: old name is prefix of CSV name
+    for (var i = 0; i < FOODS.length; i++) {
+      if (FOODS[i].name.indexOf(oldName) === 0) {
+        migrationMap[oldIdx] = i;
+        return;
+      }
+    }
+  });
+}
+
+function migrateOldRecords() {
+  if (localStorage.getItem('diet_version') === '2') return;
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (!key || key.indexOf('diet_2') !== 0) continue; // only diet_YYYY-MM-DD keys
+    if (key === 'diet_targets' || key === 'diet_settings' || key === 'diet_version') continue;
+    try {
+      var data = JSON.parse(localStorage.getItem(key));
+      if (!Array.isArray(data) || data.length === 0) continue;
+      var maxIdx = Math.max.apply(null, data);
+      if (maxIdx <= 31) {
+        // Likely old format — migrate
+        var migrated = data.map(function(idx) {
+          return (migrationMap[idx] !== undefined) ? migrationMap[idx] : idx;
+        });
+        localStorage.setItem(key, JSON.stringify(migrated));
+      }
+    } catch(e) {}
+  }
+  localStorage.setItem('diet_version', '2');
+}
+
+// ============================================================
+// Usage tracking for dynamic favorites
+// ============================================================
+function recordUsage(foodIdx) {
+  var key = 'diet_usage';
+  var usage = {};
+  try { usage = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) {}
+  var entry = usage[foodIdx] || {count:0, last:0};
+  entry.count++;
+  entry.last = Date.now();
+  usage[foodIdx] = entry;
+  localStorage.setItem(key, JSON.stringify(usage));
+}
+
+function getDynamicFavorites(maxItems, csvFavIds) {
+  maxItems = maxItems || 16;
+  var key = 'diet_usage';
+  var usage = {};
+  try { usage = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) {}
+  var keys = Object.keys(usage);
+  if (keys.length === 0) return null; // no usage data — use CSV fav
+
+  var now = Date.now();
+  var HALF_LIFE = 30 * 86400000; // 30 days
+  var scored = [];
+
+  keys.forEach(function(idx) {
+    var entry = usage[idx];
+    var age = now - entry.last;
+    // Decay factor: halves every 30 days
+    var decay = Math.pow(0.5, age / HALF_LIFE);
+    var score = entry.count * decay;
+    // Only include if score is significant (used recently enough)
+    if (score >= 0.3) {
+      scored.push({idx: parseInt(idx), score: score});
+    }
+  });
+
+  if (scored.length === 0) return null;
+
+  scored.sort(function(a,b) { return b.score - a.score; });
+  var result = scored.slice(0, maxItems).map(function(s) { return s.idx; });
+
+  // Merge with CSV favorites: fill remaining slots with CSV defaults
+  if (csvFavIds && result.length < maxItems) {
+    var inResult = {};
+    result.forEach(function(id) { inResult[id] = true; });
+    for (var i = 0; i < csvFavIds.length && result.length < maxItems; i++) {
+      if (!inResult[csvFavIds[i]]) {
+        result.push(csvFavIds[i]);
+        inResult[csvFavIds[i]] = true;
+      }
+    }
+  }
+
+  return result;
+}
 
 var PFC_COLORS = {
   p:{main:'#e91e63',light:'rgba(233,30,99,0.7)',particle:'rgba(233,30,99,0.8)'},
@@ -656,6 +1079,7 @@ var PFC_TARGETS = {
   f:{min:30,max:55,scale:80},
   c:{min:150,max:220,scale:280},
 };
+var PFC_NAMES = {p:'P たんぱく質',f:'F 脂質',c:'C 炭水化物'};
 var KCAL_TARGET = 1800;
 
 // ============================================================
@@ -665,6 +1089,7 @@ var currentDate = new Date();
 var calViewDate = new Date();
 currentDate.setHours(0,0,0,0);
 var currentCat = 'fav';
+var currentCatIndex = 0;
 
 function dateKey(d) {
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -751,7 +1176,6 @@ function changeDate(delta) {
 function loadCurrentDay() {
   dayRecords = loadDay(currentDate);
   updateDateLabel();
-  // Clear tube particles
   ['P','F','C'].forEach(function(k){
     document.getElementById('particles'+k).innerHTML='';
   });
@@ -764,19 +1188,36 @@ function loadCurrentDay() {
 // ============================================================
 function initTabs() {
   var container = document.getElementById('catTabs');
-  CATEGORIES.forEach(function(cat){
+  CATEGORIES.forEach(function(cat, idx){
     var btn = document.createElement('button');
     btn.className = 'cat-tab' + (cat.id === currentCat ? ' active' : '');
     btn.textContent = cat.label;
-    btn.onclick = function(){ switchCategory(cat.id, btn); };
+    btn.onclick = function(){ switchCategory(cat.id, btn, idx); };
     container.appendChild(btn);
   });
 }
 
-function switchCategory(catId, btn) {
+function switchCategory(catId, btn, idx) {
   currentCat = catId;
+  if (idx !== undefined) currentCatIndex = idx;
   document.querySelectorAll('.cat-tab').forEach(function(t){ t.classList.remove('active'); });
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  SE.tick();
+  createBubbles();
+}
+
+function switchCategoryByIndex(idx) {
+  if (idx < 0) idx = CATEGORIES.length - 1;
+  if (idx >= CATEGORIES.length) idx = 0;
+  currentCatIndex = idx;
+  currentCat = CATEGORIES[idx].id;
+  var tabs = document.querySelectorAll('.cat-tab');
+  tabs.forEach(function(t){ t.classList.remove('active'); });
+  if (tabs[idx]) {
+    tabs[idx].classList.add('active');
+    // Scroll tab into view
+    tabs[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
   SE.tick();
   createBubbles();
 }
@@ -784,19 +1225,200 @@ function switchCategory(catId, btn) {
 function getFoodIndices() {
   var cat = CATEGORIES.find(function(c){ return c.id === currentCat; });
   if (!cat || cat.ids === null) return FOODS.map(function(_,i){return i;});
+
+  // Dynamic favorites: merge usage-based with CSV defaults
+  if (cat.id === 'fav') {
+    var dynamic = getDynamicFavorites(16, cat.ids);
+    if (dynamic) return dynamic;
+  }
+
   return cat.ids;
 }
 
 // ============================================================
-// Create bubbles
+// Swipe gesture + Bubble drag physics
 // ============================================================
+var swipeStartX = 0, swipeStartY = 0, swiping = false;
+var dragState = null;
+var physicsBubbles = [];
+var lastDragEndTime = 0;
+
+function initSwipe() {
+  var layer = document.getElementById('bubbleLayer');
+
+  layer.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) return;
+    var touch = e.touches[0];
+
+    // Check if touch started on a bubble (drag only in random mode)
+    var bubble = e.target.closest('.bubble');
+    if (bubble && !gridMode) {
+      dragState = {
+        el: bubble,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        elStartX: parseFloat(bubble.style.left),
+        elStartY: parseFloat(bubble.style.top),
+        lastX: touch.clientX,
+        lastY: touch.clientY,
+        lastTime: Date.now(),
+        vx: 0, vy: 0,
+        moved: false
+      };
+    }
+
+    // Also track for swipe
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    swiping = true;
+  }, {passive:true});
+
+  layer.addEventListener('touchmove', function(e) {
+    if (e.touches.length !== 1) return;
+    var touch = e.touches[0];
+
+    // Bubble drag
+    if (dragState) {
+      var dx = touch.clientX - dragState.startX;
+      var dy = touch.clientY - dragState.startY;
+
+      if (!dragState.moved && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        dragState.moved = true;
+        dragState.el.style.animation = 'none';
+        dragState.el.style.transition = 'none';
+        swiping = false; // cancel swipe
+      }
+
+      if (dragState.moved) {
+        e.preventDefault();
+        var now = Date.now();
+        var dt = Math.max(1, now - dragState.lastTime);
+        dragState.vx = (touch.clientX - dragState.lastX) / dt * 16;
+        dragState.vy = (touch.clientY - dragState.lastY) / dt * 16;
+        dragState.lastX = touch.clientX;
+        dragState.lastY = touch.clientY;
+        dragState.lastTime = now;
+
+        dragState.el.style.left = (dragState.elStartX + dx) + 'px';
+        dragState.el.style.top = (dragState.elStartY + dy) + 'px';
+        return;
+      }
+    }
+
+    // Swipe hints
+    if (!swiping) return;
+    var sdx = touch.clientX - swipeStartX;
+    var sdy = touch.clientY - swipeStartY;
+    if (Math.abs(sdx) > 30 && Math.abs(sdx) > Math.abs(sdy) * 1.5) {
+      if (sdx > 0) {
+        document.getElementById('swipeL').classList.add('show');
+        document.getElementById('swipeR').classList.remove('show');
+      } else {
+        document.getElementById('swipeR').classList.add('show');
+        document.getElementById('swipeL').classList.remove('show');
+      }
+    }
+  }, {passive:false}); // passive:false needed for bubble drag preventDefault
+
+  layer.addEventListener('touchend', function(e) {
+    document.getElementById('swipeL').classList.remove('show');
+    document.getElementById('swipeR').classList.remove('show');
+
+    // Bubble drag end
+    if (dragState && dragState.moved) {
+      lastDragEndTime = Date.now();
+      physicsBubbles.push({
+        el: dragState.el,
+        vx: dragState.vx * 1.2,
+        vy: dragState.vy * 1.2
+      });
+      dragState = null;
+      swiping = false;
+      return;
+    }
+    dragState = null;
+
+    // Swipe end
+    if (!swiping) return;
+    swiping = false;
+    var endX = e.changedTouches[0].clientX;
+    var endY = e.changedTouches[0].clientY;
+    var dx = endX - swipeStartX;
+    var dy = endY - swipeStartY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx > 0) switchCategoryByIndex(currentCatIndex - 1);
+      else switchCategoryByIndex(currentCatIndex + 1);
+    }
+  }, {passive:true});
+}
+
+function updatePhysics() {
+  var friction = 0.92;
+  var JAR_H = 250, BOT_H = 50;
+  var alive = [];
+
+  physicsBubbles.forEach(function(pb) {
+    pb.vx *= friction;
+    pb.vy *= friction;
+
+    var x = parseFloat(pb.el.style.left) + pb.vx;
+    var y = parseFloat(pb.el.style.top) + pb.vy;
+    var size = pb.el.offsetWidth;
+
+    // Bounce off edges
+    if (x < 5) { x = 5; pb.vx = Math.abs(pb.vx) * 0.5; }
+    if (x + size > W - 5) { x = W - size - 5; pb.vx = -Math.abs(pb.vx) * 0.5; }
+    if (y < JAR_H) { y = JAR_H; pb.vy = Math.abs(pb.vy) * 0.5; }
+    if (y + size > H - BOT_H) { y = H - BOT_H - size; pb.vy = -Math.abs(pb.vy) * 0.5; }
+
+    pb.el.style.left = x + 'px';
+    pb.el.style.top = y + 'px';
+
+    if (Math.abs(pb.vx) > 0.4 || Math.abs(pb.vy) > 0.4) {
+      alive.push(pb);
+    } else {
+      // Restore float animation
+      pb.el.style.animation = '';
+      pb.el.style.transition = '';
+    }
+  });
+
+  physicsBubbles = alive;
+}
+
+// ============================================================
+// Create bubbles (random ≤16, grid >16)
+// ============================================================
+var gridMode = false;
+
 function createBubbles() {
   var layer = document.getElementById('bubbleLayer');
   layer.innerHTML = '';
-  var ids = getFoodIndices();
-  var JAR_H = 215, BOT_H = 50;
-  var positions = [];
+  physicsBubbles = [];
+  layer.style.display = '';
+  layer.style.overflowY = '';
 
+  // Hide search results if no search active
+  if (document.getElementById('searchInput').value.trim() === '') {
+    document.getElementById('searchResults').classList.remove('show');
+  }
+
+  var ids = getFoodIndices();
+  if (!ids.length) return;
+
+  var JAR_H = 250, BOT_H = 50;
+
+  if (ids.length <= 16) {
+    gridMode = false;
+    createBubblesRandom(layer, ids, JAR_H, BOT_H);
+  } else {
+    gridMode = true;
+    createBubblesGrid(layer, ids, JAR_H, BOT_H);
+  }
+}
+
+function createBubblesRandom(layer, ids, JAR_H, BOT_H) {
+  var positions = [];
   ids.forEach(function(foodIdx, i){
     var food = FOODS[foodIdx];
     var size = 68 + Math.random()*14;
@@ -806,29 +1428,74 @@ function createBubbles() {
       y = JAR_H + 8 + Math.random()*(H - JAR_H - BOT_H - size - 16);
       overlap = positions.some(function(p){
         var dx=x-p.x, dy=y-p.y;
-        return Math.sqrt(dx*dx+dy*dy) < (size/2+p.s/2+8);
+        return Math.sqrt(dx*dx+dy*dy) < (size/2+p.s/2+6);
       });
       tries++;
-    } while(overlap && tries<80);
+    } while(overlap && tries<100);
     positions.push({x:x,y:y,s:size});
-
-    var el = document.createElement('div');
-    el.className = 'bubble';
-    var floatY = -(8+Math.random()*8);
-    el.style.cssText =
-      'left:'+x+'px;top:'+y+'px;width:'+size+'px;height:'+size+'px;'+
-      'background:'+BUBBLE_COLORS[foodIdx%BUBBLE_COLORS.length]+';'+
-      '--dur:'+(3.5+Math.random()*2)+'s;--delay:'+(Math.random()*3)+'s;--float-y:'+floatY+'px;';
-    el.innerHTML =
-      '<div class="bubble-inner">'+
-        '<span class="bubble-emoji">'+food.emoji+'</span>'+
-        '<span class="bubble-name">'+food.name+'</span>'+
-        '<span class="bubble-kcal">'+food.unit+' '+food.kcal+'kcal</span>'+
-      '</div>';
-    el.addEventListener('click', function(e){ popBubble(e,el,food,foodIdx); });
-    el.dataset.foodIndex = foodIdx;
-    layer.appendChild(el);
+    layer.appendChild(makeBubbleEl(foodIdx, food, x, y, size, false));
   });
+}
+
+function createBubblesGrid(layer, ids, JAR_H, BOT_H) {
+  var count = ids.length;
+  var size, gap;
+  if (count <= 25) { size = 64; gap = 4; }
+  else if (count <= 50) { size = 58; gap = 3; }
+  else if (count <= 100) { size = 52; gap = 3; }
+  else { size = 48; gap = 2; }
+
+  var cols = Math.floor((W - 12) / (size + gap));
+  var startX = Math.round((W - cols * (size + gap) + gap) / 2);
+  var totalRows = Math.ceil(count / cols);
+  var totalH = totalRows * (size + gap) + 8;
+  var availH = H - JAR_H - BOT_H;
+
+  // Enable scrolling if grid exceeds visible area
+  if (totalH > availH) {
+    layer.style.overflowY = 'auto';
+    layer.style.webkitOverflowScrolling = 'touch';
+    // Spacer to make scrollable area tall enough
+    var spacer = document.createElement('div');
+    spacer.style.cssText = 'position:absolute;top:0;left:0;width:1px;height:'+(JAR_H + totalH + 16)+'px;pointer-events:none;';
+    layer.appendChild(spacer);
+  }
+
+  ids.forEach(function(foodIdx, i){
+    var food = FOODS[foodIdx];
+    var row = Math.floor(i / cols);
+    var col = i % cols;
+    var x = startX + col * (size + gap);
+    var y = JAR_H + 8 + row * (size + gap);
+    layer.appendChild(makeBubbleEl(foodIdx, food, x, y, size, true));
+  });
+}
+
+function makeBubbleEl(foodIdx, food, x, y, size, isGrid) {
+  var el = document.createElement('div');
+  el.className = 'bubble';
+  var floatY = isGrid ? -(2+Math.random()*3) : -(8+Math.random()*8);
+  el.style.cssText =
+    'left:'+x+'px;top:'+y+'px;width:'+size+'px;height:'+size+'px;'+
+    'background:'+BUBBLE_COLORS[foodIdx%BUBBLE_COLORS.length]+';'+
+    '--dur:'+(4+Math.random()*2)+'s;--delay:'+(Math.random()*3)+'s;--float-y:'+floatY+'px;';
+
+  var emojiS = size < 54 ? 17 : size < 62 ? 19 : 22;
+  var nameS = size < 54 ? 6.5 : size < 62 ? 7 : 8;
+  var kcalS = size < 54 ? 5.5 : size < 62 ? 6 : 7;
+
+  el.innerHTML =
+    '<div class="bubble-inner">'+
+      '<span class="bubble-emoji" style="font-size:'+emojiS+'px">'+food.emoji+'</span>'+
+      '<span class="bubble-name" style="font-size:'+nameS+'px">'+food.name+'</span>'+
+      '<span class="bubble-kcal" style="font-size:'+kcalS+'px">'+food.kcal+'kcal</span>'+
+    '</div>';
+  el.addEventListener('click', function(e){
+    if (Date.now() - lastDragEndTime < 300) return;
+    popBubble(e,el,food,foodIdx);
+  });
+  el.dataset.foodIndex = foodIdx;
+  return el;
 }
 
 // ============================================================
@@ -839,11 +1506,9 @@ function popBubble(e, el, food, idx) {
   var cx = rect.left + rect.width/2;
   var cy = rect.top + rect.height/2;
 
-  // Sound!
   SE.pop();
   SE.sparkle(400);
 
-  // Pop animation
   el.classList.add('popping');
   el.classList.remove('reappear');
   setTimeout(function(){
@@ -851,7 +1516,6 @@ function popBubble(e, el, food, idx) {
     el.classList.add('reappear');
   }, 1000);
 
-  // Toast
   var toast = document.createElement('div');
   toast.className = 'kcal-toast';
   toast.textContent = '+'+food.kcal+' kcal';
@@ -860,17 +1524,15 @@ function popBubble(e, el, food, idx) {
   document.body.appendChild(toast);
   setTimeout(function(){ toast.remove(); }, 1200);
 
-  // PFC particles
   spawnPFCParticles(cx, cy, food);
 
-  // Record
   dayRecords.push(idx);
   saveDay(currentDate, dayRecords);
+  recordUsage(idx);
 
   setTimeout(function(){ updateStatsWithSound(); }, 500);
   addHistoryChip(food, dayRecords.length - 1);
 
-  // Undo
   var btn = document.getElementById('undoBtn');
   btn.classList.add('show');
   clearTimeout(btn._timeout);
@@ -949,6 +1611,7 @@ function animLoop() {
     alive.push(p);
   });
   flyingParticles = alive;
+  updatePhysics();
   requestAnimationFrame(animLoop);
 }
 
@@ -971,26 +1634,17 @@ function updateStatsImmediate() {
   });
 }
 
-// Stats update WITH sound feedback
 function updateStatsWithSound() {
   var t = recalcTotals();
   updateStatsImmediate();
 
-  // Check PFC zone transitions
   ['p','f','c'].forEach(function(k){
     var val = t[k];
     var tgt = PFC_TARGETS[k];
     var inZone = val >= tgt.min && val <= tgt.max;
     var overMax = val > tgt.max;
-
-    // Newly entered target zone!
-    if (inZone && !prevPFCStatus[k]) {
-      SE.achieve();
-    }
-    // Exceeded max
-    if (overMax && !prevPFCStatus[k+'_over']) {
-      SE.warn();
-    }
+    if (inZone && !prevPFCStatus[k]) SE.achieve();
+    if (overMax && !prevPFCStatus[k+'_over']) SE.warn();
     prevPFCStatus[k] = inZone;
     prevPFCStatus[k+'_over'] = overMax;
   });
@@ -1019,14 +1673,11 @@ function removeRecordAt(chip) {
   if (isNaN(pos) || pos < 0 || pos >= dayRecords.length) return;
   SE.undo();
   if (navigator.vibrate) navigator.vibrate(15);
-  // Animate chip removal
   chip.classList.add('removing');
   setTimeout(function(){
-    // Remove the record at position
     dayRecords.splice(pos, 1);
     saveDay(currentDate, dayRecords);
     updateStatsImmediate();
-    // Rebuild to fix positions
     rebuildHistory();
   }, 350);
 }
@@ -1044,6 +1695,81 @@ function undoLast() {
   var chips = tray.querySelectorAll('.history-chip');
   if(chips.length) chips[chips.length-1].remove();
   if(navigator.vibrate) navigator.vibrate(15);
+}
+
+// ============================================================
+// PFC Breakdown Popup
+// ============================================================
+function showPFCBreakdown(key) {
+  SE.tick();
+  var overlay = document.getElementById('pfcOverlay');
+  var popup = document.getElementById('pfcPopup');
+  var t = recalcTotals();
+  var tgt = PFC_TARGETS[key];
+  var val = t[key];
+  var color = PFC_COLORS[key].main;
+  var name = PFC_NAMES[key];
+  var inZone = val >= tgt.min && val <= tgt.max;
+  var statusText = val < tgt.min ? '不足' : val > tgt.max ? 'オーバー' : '適正 ✓';
+  var statusColor = val < tgt.min ? '#90a4ae' : val > tgt.max ? '#ef6c00' : '#43a047';
+
+  // Build food contributions
+  var contributions = {};
+  dayRecords.forEach(function(idx){
+    var food = FOODS[idx];
+    if (food[key] <= 0) return;
+    if (!contributions[idx]) {
+      contributions[idx] = {food:food, count:0, total:0};
+    }
+    contributions[idx].count++;
+    contributions[idx].total += food[key];
+  });
+
+  // Sort by total contribution descending
+  var sorted = Object.values(contributions).sort(function(a,b){ return b.total - a.total; });
+  var maxContrib = sorted.length ? sorted[0].total : 1;
+
+  var html = '';
+  html += '<div class="pfc-popup-header">';
+  html += '<div class="pfc-popup-title" style="color:'+color+'">'+name+'</div>';
+  html += '<button class="pfc-popup-close" onclick="hidePFCBreakdown()">✕</button>';
+  html += '</div>';
+
+  // Summary bar
+  var pct = Math.min(val / tgt.max * 100, 100);
+  html += '<div class="pfc-popup-summary">';
+  html += '<div><div class="pfc-summary-num" style="color:'+color+'">'+Math.round(val)+'<span style="font-size:12px;font-weight:600">g</span></div>';
+  html += '<div class="pfc-summary-target">目標 '+tgt.min+'〜'+tgt.max+'g　<span style="color:'+statusColor+';font-weight:800">'+statusText+'</span></div></div>';
+  html += '<div class="pfc-summary-bar"><div class="pfc-summary-bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>';
+  html += '</div>';
+
+  if (sorted.length === 0) {
+    html += '<div style="text-align:center;padding:24px;color:#ccc;font-size:12px">まだ記録がありません</div>';
+  } else {
+    html += '<div style="font-size:10px;color:#b0bec5;font-weight:600;margin-bottom:6px">内訳（'+name+'への貢献順）</div>';
+    sorted.forEach(function(item){
+      var barPct = Math.min(item.total / maxContrib * 100, 100);
+      var countLabel = item.count > 1 ? ' ×'+item.count : '';
+      html += '<div class="pfc-item">';
+      html += '<div class="pfc-item-emoji">'+item.food.emoji+'</div>';
+      html += '<div class="pfc-item-info">';
+      html += '<div class="pfc-item-name">'+item.food.name+countLabel+'</div>';
+      html += '<div class="pfc-item-detail">'+item.food.unit+'あたり '+item.food[key]+'g</div>';
+      html += '</div>';
+      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">';
+      html += '<div class="pfc-item-val" style="color:'+color+'">'+Math.round(item.total*10)/10+'g</div>';
+      html += '<div class="pfc-item-bar"><div class="pfc-item-bar-fill" style="width:'+barPct+'%;background:'+color+'"></div></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+  }
+
+  popup.innerHTML = html;
+  overlay.classList.add('show');
+}
+
+function hidePFCBreakdown() {
+  document.getElementById('pfcOverlay').classList.remove('show');
 }
 
 // ============================================================
@@ -1157,7 +1883,6 @@ function auroraBg(status, stats) {
   if(status.f) colors.push('#ff9800');
   if(status.c) colors.push('#4caf50');
   if(colors.length===0) {
-    // Gray with slight color hints
     var pRatio = Math.min(stats.p/PFC_TARGETS.p.min,1);
     var fRatio = Math.min(stats.f/PFC_TARGETS.f.min,1);
     var cRatio = Math.min(stats.c/PFC_TARGETS.c.min,1);
@@ -1171,13 +1896,12 @@ function auroraBg(status, stats) {
 function renderWeekSummary() {
   var body = document.getElementById('summaryBody');
   var today = new Date(); today.setHours(0,0,0,0);
-  // Get this week (Mon-Sun)
   var dow = today.getDay();
   var mondayOffset = dow === 0 ? -6 : 1-dow;
   var monday = new Date(today.getTime()+mondayOffset*86400000);
 
   var weekDays = [];
-  var perfectCount=0, streak=0, maxStreak=0, totalKcal=0, totalP=0, totalF=0, totalC=0, recordDays=0;
+  var perfectCount=0, streak=0, totalKcal=0, totalP=0, totalF=0, totalC=0, recordDays=0;
 
   for(var i=0;i<7;i++){
     var d = new Date(monday.getTime()+i*86400000);
@@ -1193,7 +1917,6 @@ function renderWeekSummary() {
     }
   }
 
-  // Count streak backwards from today
   var checkDate = new Date(today);
   while(true){
     var s = getDayStats(checkDate);
@@ -1204,7 +1927,6 @@ function renderWeekSummary() {
 
   var html = '';
 
-  // Week aurora balls
   html += '<div class="week-row">';
   weekDays.forEach(function(wd){
     var dayName = DAYS[wd.date.getDay()];
@@ -1221,7 +1943,6 @@ function renderWeekSummary() {
     html += '<div class="day-label'+(wd.isToday?' today':'')+'">'+dayName+'</div>';
     html += '<div class="'+cls+'" style="background:'+bg+'"></div>';
     html += '<div class="day-kcal">'+(wd.stats?wd.stats.kcal:'—')+'</div>';
-    // Mini PFC bars
     if(wd.stats){
       html += '<div class="day-detail-mini">';
       ['p','f','c'].forEach(function(k){
@@ -1237,20 +1958,17 @@ function renderWeekSummary() {
   });
   html += '</div>';
 
-  // Perfect counter
   html += '<div class="perfect-counter">';
   html += '<div class="perfect-num">'+perfectCount+'</div>';
   html += '<div class="perfect-label">🌈 パーフェクトデー（今週）</div>';
   html += '</div>';
 
-  // Streak
   if(streak>0){
     html += '<div style="text-align:center;margin-bottom:14px">';
     html += '<span class="streak-badge">🔥 '+streak+'日連続記録中！</span>';
     html += '</div>';
   }
 
-  // Average stats
   if(recordDays>0){
     html += '<div class="stat-card">';
     html += '<div class="stat-card-title">📈 今週の平均</div>';
@@ -1293,13 +2011,11 @@ function renderMonthSummary() {
 
   var html = '';
 
-  // Perfect counter
   html += '<div class="perfect-counter">';
   html += '<div class="perfect-num">'+perfectCount+'</div>';
   html += '<div class="perfect-label">🌈 パーフェクトデー（今月）</div>';
   html += '</div>';
 
-  // Month calendar
   html += '<div class="stat-card">';
   html += '<div class="stat-card-title">'+(m+1)+'月のカレンダー</div>';
   html += '<div class="month-grid">';
@@ -1315,13 +2031,12 @@ function renderMonthSummary() {
 
     var cls = 'month-day'+(md.stats?' has-data':'');
     html += '<div class="'+cls+'">';
-    html += '<div class="month-day-ball'+(md.status.perfect?' perfect':'')+'" style="'+ballBg+'"></div>';
+    html += '<div class="month-day-ball'+(md.status.perfect?' perfect':'')+'\" style="'+ballBg+'"></div>';
     html += md.day;
     html += '</div>';
   });
   html += '</div></div>';
 
-  // Legend
   html += '<div class="stat-card">';
   html += '<div class="stat-card-title">凡例</div>';
   html += '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#78909c">';
@@ -1335,15 +2050,338 @@ function renderMonthSummary() {
 }
 
 // ============================================================
+// Settings
+// ============================================================
+function showSettings() {
+  SE.tick();
+  // Populate manual fields with current values
+  document.getElementById('manKcal').value = KCAL_TARGET;
+  document.getElementById('manPMin').value = PFC_TARGETS.p.min;
+  document.getElementById('manPMax').value = PFC_TARGETS.p.max;
+  document.getElementById('manFMin').value = PFC_TARGETS.f.min;
+  document.getElementById('manFMax').value = PFC_TARGETS.f.max;
+  document.getElementById('manCMin').value = PFC_TARGETS.c.min;
+  document.getElementById('manCMax').value = PFC_TARGETS.c.max;
+  // Load saved body info
+  var saved = loadSettings();
+  if (saved) {
+    if (saved.sex) document.getElementById('setSex').value = saved.sex;
+    if (saved.age) document.getElementById('setAge').value = saved.age;
+    if (saved.height) document.getElementById('setHeight').value = saved.height;
+    if (saved.weight) document.getElementById('setWeight').value = saved.weight;
+    if (saved.activity) document.getElementById('setActivity').value = saved.activity;
+    if (saved.goal) document.getElementById('setGoal').value = saved.goal;
+  }
+  document.getElementById('calcResult').innerHTML = '';
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+
+function hideSettings() {
+  document.getElementById('settingsOverlay').classList.remove('show');
+}
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem('diet_settings')); } catch(e) { return null; }
+}
+
+function saveSettings(obj) {
+  localStorage.setItem('diet_settings', JSON.stringify(obj));
+}
+
+function calcTargets() {
+  SE.tick();
+  var sex = document.getElementById('setSex').value;
+  var age = parseFloat(document.getElementById('setAge').value);
+  var height = parseFloat(document.getElementById('setHeight').value);
+  var weight = parseFloat(document.getElementById('setWeight').value);
+  var activity = parseFloat(document.getElementById('setActivity').value);
+  var deficit = parseInt(document.getElementById('setGoal').value);
+
+  if (!age || !height || !weight) {
+    document.getElementById('calcResult').innerHTML =
+      '<div style="text-align:center;padding:12px;color:#ef6c00;font-size:11px;font-weight:700">年齢・身長・体重を入力してください</div>';
+    return;
+  }
+
+  // Mifflin-St Jeor equation
+  var bmr;
+  if (sex === 'male') {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  }
+
+  var tdee = Math.round(bmr * activity);
+  var targetKcal = Math.max(1200, tdee - deficit); // minimum 1200kcal safety
+
+  // PFC calculation (筋肉維持型ダイエット)
+  var pGrams = Math.round(weight * 1.8); // 体重×1.8g
+  var fGrams = Math.round(weight * 0.9); // 体重×0.9g
+  var pKcal = pGrams * 4;
+  var fKcal = fGrams * 9;
+  var cKcal = Math.max(0, targetKcal - pKcal - fKcal);
+  var cGrams = Math.round(cKcal / 4);
+
+  // Min/max ranges (±15%)
+  var pMin = Math.round(pGrams * 0.85);
+  var pMax = Math.round(pGrams * 1.15);
+  var fMin = Math.round(fGrams * 0.8);
+  var fMax = Math.round(fGrams * 1.2);
+  var cMin = Math.round(cGrams * 0.85);
+  var cMax = Math.round(cGrams * 1.15);
+
+  // Save body info
+  saveSettings({
+    sex:sex, age:age, height:height, weight:weight,
+    activity:activity+'', goal:deficit+''
+  });
+
+  var html = '<div class="settings-result">';
+  html += '<div style="font-size:10px;font-weight:700;color:#78909c;margin-bottom:6px">計算結果</div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label">基礎代謝（BMR）</span><span class="settings-result-val" style="color:#78909c">'+Math.round(bmr)+' kcal</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label">消費カロリー（TDEE）</span><span class="settings-result-val" style="color:#78909c">'+tdee+' kcal</span></div>';
+  if (deficit > 0) {
+    html += '<div class="settings-result-row"><span class="settings-result-label">ダイエット調整</span><span class="settings-result-val" style="color:#ef6c00">-'+deficit+' kcal</span></div>';
+  }
+  html += '<div style="height:1px;background:#e0e0e0;margin:6px 0"></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label">🔥 目標カロリー</span><span class="settings-result-val" style="color:#43a047">'+targetKcal+' kcal</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#e91e63">P たんぱく質</span><span class="settings-result-val" style="color:#e91e63">'+pMin+'〜'+pMax+'g</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label;color:#e91e63"></span><span class="settings-result-range">体重×1.8g = '+pGrams+'g（'+Math.round(pKcal/targetKcal*100)+'%）</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#ff9800">F 脂質</span><span class="settings-result-val" style="color:#ff9800">'+fMin+'〜'+fMax+'g</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label"></span><span class="settings-result-range">体重×0.9g = '+fGrams+'g（'+Math.round(fKcal/targetKcal*100)+'%）</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#4caf50">C 炭水化物</span><span class="settings-result-val" style="color:#4caf50">'+cMin+'〜'+cMax+'g</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label"></span><span class="settings-result-range">残りカロリー = '+cGrams+'g（'+Math.round(cKcal/targetKcal*100)+'%）</span></div>';
+  html += '<button class="settings-calc-btn" style="margin-top:10px" onclick="applyCalcTargets('+targetKcal+','+pMin+','+pMax+','+fMin+','+fMax+','+cMin+','+cMax+')">✅ この値を適用する</button>';
+  html += '</div>';
+
+  document.getElementById('calcResult').innerHTML = html;
+}
+
+function applyCalcTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax) {
+  applyTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax);
+}
+
+function applyManualTargets() {
+  var kcal = parseInt(document.getElementById('manKcal').value) || 1800;
+  var pMin = parseInt(document.getElementById('manPMin').value) || 80;
+  var pMax = parseInt(document.getElementById('manPMax').value) || 120;
+  var fMin = parseInt(document.getElementById('manFMin').value) || 30;
+  var fMax = parseInt(document.getElementById('manFMax').value) || 55;
+  var cMin = parseInt(document.getElementById('manCMin').value) || 150;
+  var cMax = parseInt(document.getElementById('manCMax').value) || 220;
+  applyTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax);
+}
+
+function applyTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax) {
+  SE.achieve();
+  KCAL_TARGET = kcal;
+  PFC_TARGETS.p = {min:pMin, max:pMax, scale:Math.round(pMax*1.4)};
+  PFC_TARGETS.f = {min:fMin, max:fMax, scale:Math.round(fMax*1.5)};
+  PFC_TARGETS.c = {min:cMin, max:cMax, scale:Math.round(cMax*1.3)};
+
+  // Save targets
+  localStorage.setItem('diet_targets', JSON.stringify({
+    kcal:kcal, p:PFC_TARGETS.p, f:PFC_TARGETS.f, c:PFC_TARGETS.c
+  }));
+
+  // Update display
+  document.getElementById('kcalTarget').textContent = kcal.toLocaleString();
+  initZones();
+  updateStatsImmediate();
+
+  // Update manual fields
+  document.getElementById('manKcal').value = kcal;
+  document.getElementById('manPMin').value = pMin;
+  document.getElementById('manPMax').value = pMax;
+  document.getElementById('manFMin').value = fMin;
+  document.getElementById('manFMax').value = fMax;
+  document.getElementById('manCMin').value = cMin;
+  document.getElementById('manCMax').value = cMax;
+
+  hideSettings();
+}
+
+function loadSavedTargets() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('diet_targets'));
+    if (saved) {
+      KCAL_TARGET = saved.kcal;
+      PFC_TARGETS.p = saved.p;
+      PFC_TARGETS.f = saved.f;
+      PFC_TARGETS.c = saved.c;
+      document.getElementById('kcalTarget').textContent = KCAL_TARGET.toLocaleString();
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// Search
+// ============================================================
+function initSearch() {
+  var input = document.getElementById('searchInput');
+  var clearBtn = document.getElementById('searchClear');
+
+  input.addEventListener('input', function() {
+    var q = input.value.trim();
+    if (q.length > 0) {
+      clearBtn.classList.add('show');
+      doSearch(q);
+    } else {
+      clearBtn.classList.remove('show');
+      hideSearchResults();
+    }
+  });
+
+  input.addEventListener('focus', function() {
+    if (input.value.trim().length > 0) {
+      doSearch(input.value.trim());
+    }
+  });
+
+  clearBtn.addEventListener('click', function() {
+    input.value = '';
+    clearBtn.classList.remove('show');
+    hideSearchResults();
+    input.blur();
+  });
+}
+
+function doSearch(query) {
+  var results = [];
+  var q = query.toLowerCase();
+  // Convert katakana to hiragana for matching
+  var qHira = katakanaToHiragana(q);
+
+  FOODS.forEach(function(food, idx) {
+    var nameL = food.name.toLowerCase();
+    var nameH = katakanaToHiragana(nameL);
+    if (nameL.indexOf(q) !== -1 || nameH.indexOf(qHira) !== -1 ||
+        food.emoji.indexOf(q) !== -1 ||
+        food.unit.toLowerCase().indexOf(q) !== -1) {
+      results.push({ food:food, idx:idx });
+    }
+  });
+
+  showSearchResults(results, query);
+}
+
+function katakanaToHiragana(str) {
+  return str.replace(/[\u30A1-\u30F6]/g, function(ch) {
+    return String.fromCharCode(ch.charCodeAt(0) - 0x60);
+  });
+}
+
+function showSearchResults(results, query) {
+  var container = document.getElementById('searchResults');
+  var html = '';
+
+  if (results.length === 0) {
+    html = '<div class="search-no-result">「'+query+'」に一致する食品がありません</div>';
+  } else {
+    html += '<div class="search-count">'+results.length+'件の食品</div>';
+    results.forEach(function(r) {
+      html += '<div class="search-result-item" data-idx="'+r.idx+'">';
+      html += '<div class="search-result-emoji">'+r.food.emoji+'</div>';
+      html += '<div class="search-result-info">';
+      html += '<div class="search-result-name">'+r.food.name+'</div>';
+      html += '<div class="search-result-detail">'+r.food.unit+'</div>';
+      html += '</div>';
+      html += '<div style="text-align:right">';
+      html += '<div class="search-result-kcal">'+r.food.kcal+'</div>';
+      html += '<div class="search-result-pfc">';
+      html += '<span style="background:rgba(233,30,99,0.1);color:#e91e63">P'+r.food.p+'</span>';
+      html += '<span style="background:rgba(255,152,0,0.1);color:#ff9800">F'+r.food.f+'</span>';
+      html += '<span style="background:rgba(76,175,80,0.1);color:#4caf50">C'+r.food.c+'</span>';
+      html += '</div></div></div>';
+    });
+  }
+
+  container.innerHTML = html;
+  container.classList.add('show');
+
+  // Hide bubbles during search
+  document.getElementById('bubbleLayer').style.display = 'none';
+
+  // Add click handlers
+  container.querySelectorAll('.search-result-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      var idx = parseInt(item.dataset.idx);
+      selectFoodFromSearch(idx);
+    });
+  });
+}
+
+function hideSearchResults() {
+  document.getElementById('searchResults').classList.remove('show');
+  document.getElementById('bubbleLayer').style.display = '';
+}
+
+function selectFoodFromSearch(idx) {
+  var food = FOODS[idx];
+  if (!food) return;
+  SE.pop();
+  SE.sparkle(400);
+
+  // Kcal toast at center screen
+  var toast = document.createElement('div');
+  toast.className = 'kcal-toast';
+  toast.textContent = '+'+food.kcal+' kcal';
+  toast.style.left = (W/2)+'px';
+  toast.style.top = (H/2)+'px';
+  toast.style.color = '#555';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 1200);
+
+  // Spawn PFC particles from center
+  spawnPFCParticles(W/2, H/3, food);
+
+  dayRecords.push(idx);
+  saveDay(currentDate, dayRecords);
+  recordUsage(idx);
+
+  setTimeout(function(){ updateStatsWithSound(); }, 500);
+  addHistoryChip(food, dayRecords.length - 1);
+
+  var btn = document.getElementById('undoBtn');
+  btn.classList.add('show');
+  clearTimeout(btn._timeout);
+  btn._timeout = setTimeout(function(){ btn.classList.remove('show'); }, 5000);
+
+  if (navigator.vibrate) navigator.vibrate(30);
+
+  // Clear search
+  var searchInput = document.getElementById('searchInput');
+  if (searchInput.value.trim() !== '') {
+    searchInput.value = '';
+    document.getElementById('searchClear').classList.remove('show');
+    hideSearchResults();
+  }
+}
+
+// ============================================================
 // Init
 // ============================================================
 function init() {
   initCanvas();
+  loadSavedTargets();
   initZones();
-  initTabs();
-  loadCurrentDay();
-  createBubbles();
-  animLoop();
+
+  // Load foods from CSV, then build UI
+  loadFoodsFromCSV().then(function() {
+    initTabs();
+    initSwipe();
+    initSearch();
+    loadCurrentDay();
+    createBubbles();
+    animLoop();
+  }).catch(function(err) {
+    console.error('CSV load failed:', err);
+    // Fallback — init with empty foods
+    initTabs();
+    initSwipe();
+    initSearch();
+    animLoop();
+  });
 }
 
 window.addEventListener('resize', function(){
