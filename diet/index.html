@@ -31,7 +31,7 @@ body{
 .top-row{display:flex;align-items:center;position:relative}
 .top-row-left{flex:1;display:flex;align-items:center}
 .top-row-right{flex:1;display:flex;justify-content:flex-end;align-items:baseline}
-.header-logo{height:24px;width:auto;cursor:pointer;flex-shrink:0;transition:transform .15s}
+.header-logo{height:29px;width:auto;cursor:pointer;flex-shrink:0;transition:transform .15s}
 .header-logo:active{transform:scale(0.92)}
 
 /* Date nav */
@@ -3160,9 +3160,9 @@ function calcTargets() {
 
   // PFC calculation (筋肉維持型ダイエット)
   var pGrams = Math.round(weight * 1.8); // 体重×1.8g
-  var fGrams = Math.round(weight * 0.9); // 体重×0.9g
   var pKcal = pGrams * 4;
-  var fKcal = fGrams * 9;
+  var fKcal = Math.round(targetKcal * 0.20); // 総カロリーの20%
+  var fGrams = Math.round(fKcal / 9);
   var cKcal = Math.max(0, targetKcal - pKcal - fKcal);
   var cGrams = Math.round(cKcal / 4);
 
@@ -3192,7 +3192,7 @@ function calcTargets() {
   html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#e91e63">P たんぱく質</span><span class="settings-result-val" style="color:#e91e63">'+pMin+'〜'+pMax+'g</span></div>';
   html += '<div class="settings-result-row"><span class="settings-result-label;color:#e91e63"></span><span class="settings-result-range">体重×1.8g = '+pGrams+'g（'+Math.round(pKcal/targetKcal*100)+'%）</span></div>';
   html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#ff9800">F 脂質</span><span class="settings-result-val" style="color:#ff9800">'+fMin+'〜'+fMax+'g</span></div>';
-  html += '<div class="settings-result-row"><span class="settings-result-label"></span><span class="settings-result-range">体重×0.9g = '+fGrams+'g（'+Math.round(fKcal/targetKcal*100)+'%）</span></div>';
+  html += '<div class="settings-result-row"><span class="settings-result-label"></span><span class="settings-result-range">総カロリーの20% = '+fGrams+'g（'+Math.round(fKcal/targetKcal*100)+'%）</span></div>';
   html += '<div class="settings-result-row"><span class="settings-result-label" style="color:#4caf50">C 炭水化物</span><span class="settings-result-val" style="color:#4caf50">'+cMin+'〜'+cMax+'g</span></div>';
   html += '<div class="settings-result-row"><span class="settings-result-label"></span><span class="settings-result-range">残りカロリー = '+cGrams+'g（'+Math.round(cKcal/targetKcal*100)+'%）</span></div>';
   html += '<button class="settings-calc-btn" style="margin-top:10px" onclick="applyCalcTargets('+targetKcal+','+pMin+','+pMax+','+fMin+','+fMax+','+cMin+','+cMax+')">✅ この値を適用する</button>';
