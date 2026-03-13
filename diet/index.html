@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>ぱちぱちダイエット</title>
+<title>ぷちレコ - かんたんレコーディングダイエット</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -22,32 +22,37 @@ body{
 /* ===== TOP BAR (Record screen) ===== */
 .top-bar{
   position:absolute;top:0;left:0;right:0;z-index:100;
-  padding:6px 12px 0;
+  padding:6px 8px 0 12px;
   background:rgba(255,255,255,0.88);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-radius:0 0 18px 18px;
   box-shadow:0 4px 20px rgba(0,0,0,0.06);
 }
-.top-row{display:flex;justify-content:space-between;align-items:center}
+.top-row{display:flex;align-items:center;position:relative}
+.top-row-left{flex:1;display:flex;align-items:center}
+.top-row-right{flex:1;display:flex;justify-content:flex-end;align-items:baseline}
+.header-logo{height:24px;width:auto;cursor:pointer;flex-shrink:0;transition:transform .15s}
+.header-logo:active{transform:scale(0.92)}
 
 /* Date nav */
-.date-nav{display:flex;align-items:center;gap:6px}
+.date-nav{display:flex;align-items:center;gap:4px;flex-direction:row;position:relative}
 .date-arrow{
-  width:26px;height:26px;border:none;border-radius:50%;
-  background:rgba(0,0,0,0.05);font-size:12px;
+  width:22px;height:22px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.05);font-size:10px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   color:#78909c;
 }
 .date-arrow:active{background:rgba(0,0,0,0.12)}
-.date-label{font-size:12px;color:#546e7a;font-weight:700;min-width:110px;text-align:center;cursor:pointer}
-.date-today{font-size:8px;color:#fff;background:#66bb6a;border-radius:6px;padding:1px 5px;margin-left:4px;font-weight:700}
+.date-label-wrap{display:flex;flex-direction:column;align-items:center;gap:1px}
+.date-today{font-size:7px;color:#fff;background:#66bb6a;border-radius:5px;padding:1px 6px;font-weight:700;order:-1}
+.date-label{font-size:10px;color:#546e7a;font-weight:700;min-width:auto;text-align:center;cursor:pointer}
 
 /* Kcal */
 .kcal-display{text-align:right}
-.kcal-num{font-size:26px;font-weight:900;line-height:1;color:#43a047;transition:color .3s}
+.kcal-num{font-size:20px;font-weight:900;line-height:1;color:#43a047;transition:color .3s}
 .kcal-num.warn{color:#ef6c00}
 .kcal-num.danger{color:#d32f2f}
-.kcal-unit{font-size:11px;font-weight:600;color:#888}
+.kcal-unit{font-size:10px;font-weight:600;color:#888;margin-left:-2px}
 .kcal-sub{font-size:9px;color:#bbb}
 
 /* Jars row */
@@ -687,9 +692,22 @@ body{
 .settings-data-msg{font-size:10px;color:#78909c;margin-top:6px;text-align:center;min-height:14px}
 .settings-welcome{
   background:linear-gradient(135deg,#e8f5e9,#fff8e1);
-  border-radius:14px;padding:14px;margin-bottom:14px;text-align:center;
+  border-radius:14px;padding:18px 14px;margin-bottom:14px;text-align:center;
 }
-.settings-welcome-emoji{font-size:32px;display:block;margin-bottom:6px}
+.settings-welcome-logo{
+  width:140px;height:140px;
+  border-radius:30px;
+  overflow:hidden;
+  margin:0 auto 10px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.10);
+}
+.settings-welcome-logo img{
+  width:112%;height:112%;
+  object-fit:cover;
+  object-position:center center;
+  margin:-6% 0 0 -6%;
+  display:block;
+}
 .settings-welcome-title{font-size:14px;font-weight:900;color:#37474f;margin-bottom:4px}
 .settings-welcome-desc{font-size:11px;color:#78909c;line-height:1.5}
 
@@ -830,15 +848,23 @@ body{
   <!-- Top bar -->
   <div class="top-bar">
     <div class="top-row">
+      <div class="top-row-left">
+        <img src="logo_mini.png" alt="ぷちレコ" class="header-logo" onclick="showSettings()">
+      </div>
       <div class="date-nav">
         <button class="date-arrow" onclick="changeDate(-1)">◀</button>
-        <span class="date-label" id="dateLabel" onclick="showCalendar()"></span>
+        <div class="date-label-wrap" onclick="showCalendar()">
+          <span class="date-today" id="dateBadge" style="display:none">今日</span>
+          <span class="date-label" id="dateLabel"></span>
+        </div>
         <button class="date-arrow" onclick="changeDate(1)">▶</button>
       </div>
-      <div class="kcal-display">
-        <span class="kcal-num" id="kcalNum">0</span>
-        <span class="kcal-unit">kcal</span>
-        <div class="kcal-sub">/ <span id="kcalTarget">1,800</span></div>
+      <div class="top-row-right">
+        <div class="kcal-display">
+          <span class="kcal-num" id="kcalNum">0</span>
+          <span class="kcal-unit">kcal</span>
+          <div class="kcal-sub">/ <span id="kcalTarget">1,800</span></div>
+        </div>
       </div>
     </div>
     <div class="jars-row">
@@ -959,9 +985,9 @@ body{
 
     <!-- Welcome message (first time only) -->
     <div class="settings-welcome" id="settingsWelcome" style="display:none">
-      <span class="settings-welcome-emoji">🎉</span>
-      <div class="settings-welcome-title">ぱちぱちダイエットへようこそ！</div>
-      <div class="settings-welcome-desc">はじめに体の情報を入力して<br>「🧮 自動計算する」を押してね！</div>
+      <div class="settings-welcome-logo"><img src="logo_onboarding.png" alt="ぷちレコ"></div>
+      <div class="settings-welcome-title">ぷちレコへようこそ！</div>
+      <div class="settings-welcome-desc">かんたんレコーディングダイエット<br>まずは体の情報を入力して<br>「🧮 自動計算する」を押してね！</div>
     </div>
 
     <!-- Auto calc section -->
@@ -1497,18 +1523,25 @@ function initZones() {
 var DAYS = ['日','月','火','水','木','金','土'];
 
 function formatDate(d) {
-  var today = new Date(); today.setHours(0,0,0,0);
-  var diff = Math.round((d - today) / 86400000);
-  var prefix = (d.getMonth()+1)+'月'+d.getDate()+'日（'+DAYS[d.getDay()]+'）';
-  if (diff === 0) return prefix + '<span class="date-today">今日</span>';
-  if (diff === -1) return prefix + '<span class="date-today" style="background:#90a4ae">昨日</span>';
-  return prefix;
+  return (d.getMonth()+1)+'月'+d.getDate()+'日（'+DAYS[d.getDay()]+'）';
 }
 
 function updateDateLabel() {
   document.getElementById('dateLabel').innerHTML = formatDate(currentDate);
   var today = new Date(); today.setHours(0,0,0,0);
   var diff = Math.round((currentDate - today) / 86400000);
+  var badge = document.getElementById('dateBadge');
+  if (diff === 0) {
+    badge.textContent = '今日';
+    badge.style.display = '';
+    badge.style.background = '#66bb6a';
+  } else if (diff === -1) {
+    badge.textContent = '昨日';
+    badge.style.display = '';
+    badge.style.background = '#90a4ae';
+  } else {
+    badge.style.display = 'none';
+  }
   var label = diff === 0 ? 'きょう' : diff === -1 ? 'きのう' : (currentDate.getMonth()+1)+'/'+currentDate.getDate();
   document.getElementById('historyLabel').textContent = '🍽 ' + label + '：';
 }
@@ -3253,7 +3286,7 @@ function exportAllData() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   var now = new Date();
-  var fname = 'pachi_diet_backup_' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '.json';
+  var fname = 'puchireco_backup_' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '.json';
   a.href = url;
   a.download = fname;
   document.body.appendChild(a);
