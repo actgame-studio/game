@@ -624,6 +624,7 @@ body{
   background:#fafafa;outline:none;text-align:center;
   font-family:inherit;
 }
+.settings-input::placeholder{color:#ccc;font-weight:400}
 .settings-input:focus{border-color:#66bb6a;background:#fff}
 .settings-unit{font-size:10px;color:#b0bec5;font-weight:600;min-width:24px}
 .settings-select{
@@ -684,23 +685,32 @@ body{
 .settings-data-btn.export-btn{border-color:#42a5f5;color:#1e88e5}
 .settings-data-btn.import-btn{border-color:#66bb6a;color:#43a047}
 .settings-data-msg{font-size:10px;color:#78909c;margin-top:6px;text-align:center;min-height:14px}
+.settings-welcome{
+  background:linear-gradient(135deg,#e8f5e9,#fff8e1);
+  border-radius:14px;padding:14px;margin-bottom:14px;text-align:center;
+}
+.settings-welcome-emoji{font-size:32px;display:block;margin-bottom:6px}
+.settings-welcome-title{font-size:14px;font-weight:900;color:#37474f;margin-bottom:4px}
+.settings-welcome-desc{font-size:11px;color:#78909c;line-height:1.5}
 
 /* ===== Weight Banner ===== */
-.weight-banner{
-  margin:4px 0 6px;padding:8px 14px;
-  background:rgba(255,255,255,0.85);border-radius:14px;
-  display:flex;align-items:center;gap:10px;
-  box-shadow:0 1px 6px rgba(0,0,0,0.06);
-  cursor:pointer;transition:all .15s;
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+/* Weight chip (right-aligned in top-bar) */
+.weight-chip{
+  position:absolute;right:12px;bottom:10px;
+  display:flex;flex-direction:column;align-items:flex-end;
+  cursor:pointer;transition:transform .15s;
 }
-.weight-banner:active{transform:scale(0.98);background:rgba(255,255,255,0.95)}
-.weight-banner-icon{font-size:18px}
-.weight-banner-info{flex:1}
-.weight-banner-val{font-size:15px;font-weight:900;color:#37474f}
-.weight-banner-diff{font-size:10px;font-weight:700;margin-left:6px}
-.weight-banner-prompt{font-size:11px;color:#b0bec5;font-weight:600}
-.weight-banner-arrow{color:#ccc;font-size:14px}
+.weight-chip:active{transform:scale(0.92)}
+.weight-chip-icon{font-size:9px;opacity:0.5;margin-bottom:0px}
+.weight-chip-val{font-size:13px;font-weight:900;color:#37474f;line-height:1.2;white-space:nowrap}
+.weight-chip-diff{font-size:8px;font-weight:700;line-height:1.2;margin-top:1px}
+.weight-chip-prompt{font-size:9px;color:#b0bec5;font-weight:600;white-space:nowrap}
+.weight-chip-empty .weight-chip-val{color:#b0bec5}
+.weight-chip-empty .weight-chip-label{
+  font-size:7px;color:#ff9800;font-weight:700;letter-spacing:0.3px;
+  animation:chipNudge 3s ease-in-out infinite;
+}
+@keyframes chipNudge{0%,85%,100%{opacity:1}90%{opacity:0.3}95%{opacity:1}}
 
 /* ===== Weight Popup ===== */
 .weight-overlay{
@@ -851,13 +861,10 @@ body{
         <div class="tube-val" id="valC">0g</div>
       </div>
     </div>
-    <!-- Weight banner -->
-    <div class="weight-banner" id="weightBanner" onclick="showWeightPopup()">
-      <span class="weight-banner-icon">⚖️</span>
-      <div class="weight-banner-info">
-        <span class="weight-banner-prompt" id="weightBannerText">体重を記録 ✏️</span>
-      </div>
-      <span class="weight-banner-arrow">›</span>
+    <!-- Weight chip (right-aligned) -->
+    <div class="weight-chip" id="weightBanner" onclick="showWeightPopup()">
+      <div class="weight-chip-icon">⚖️</div>
+      <div id="weightBannerText"><span class="weight-chip-prompt">--</span></div>
     </div>
   </div>
 
@@ -950,6 +957,13 @@ body{
       <button class="settings-close" onclick="hideSettings()">✕</button>
     </div>
 
+    <!-- Welcome message (first time only) -->
+    <div class="settings-welcome" id="settingsWelcome" style="display:none">
+      <span class="settings-welcome-emoji">🎉</span>
+      <div class="settings-welcome-title">ぱちぱちダイエットへようこそ！</div>
+      <div class="settings-welcome-desc">はじめに体の情報を入力して<br>「🧮 自動計算する」を押してね！</div>
+    </div>
+
     <!-- Auto calc section -->
     <div class="settings-section">
       <div class="settings-section-title">📐 からだの情報（自動計算）</div>
@@ -1037,6 +1051,9 @@ body{
         <button class="settings-data-btn export-btn" onclick="exportAllData()">📥 エクスポート</button>
         <button class="settings-data-btn import-btn" onclick="document.getElementById('importFileInput').click()">📤 インポート</button>
         <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(this.files[0])">
+      </div>
+      <div style="margin-top:8px">
+        <button class="settings-data-btn" style="border-color:#ef5350;color:#ef5350;width:100%" onclick="resetAllData()">🗑️ データを初期化</button>
       </div>
       <div class="settings-data-msg" id="dataMsg"></div>
     </div>
@@ -2446,6 +2463,13 @@ function loadCustomFoods() {
 // ============================================================
 var weightSliderVal = 60;
 
+function getProfileWeight() {
+  try {
+    var s = JSON.parse(localStorage.getItem('diet_settings'));
+    return s && s.weight ? parseFloat(s.weight) : null;
+  } catch(e) { return null; }
+}
+
 function getWeightKey(d) {
   var dd = d || currentDate;
   var y = dd.getFullYear(), m = String(dd.getMonth()+1).padStart(2,'0'), day = String(dd.getDate()).padStart(2,'0');
@@ -2488,17 +2512,19 @@ function updateWeightBanner() {
   var todayW = getWeight(currentDate);
   if (todayW !== null) {
     var prevW = getPrevWeight();
-    var html = '<span class="weight-banner-val">' + todayW.toFixed(1) + 'kg</span>';
+    var html = '<span class="weight-chip-val">' + todayW.toFixed(1) + '<small style="font-size:8px;font-weight:600;color:#90a4ae;margin-left:1px">kg</small></span>';
     if (prevW !== null) {
       var diff = todayW - prevW;
       var sign = diff > 0 ? '+' : '';
       var color = diff < 0 ? '#43a047' : diff > 0 ? '#ff7043' : '#90a4ae';
-      var emoji = diff < 0 ? '📉' : diff > 0 ? '📈' : '→';
-      html += '<span class="weight-banner-diff" style="color:'+color+'">'+sign+diff.toFixed(1)+'kg '+emoji+'</span>';
+      var arrow = diff < 0 ? '↓' : diff > 0 ? '↑' : '→';
+      html += '<div class="weight-chip-diff" style="color:'+color+'">'+sign+diff.toFixed(1)+arrow+'</div>';
     }
     banner.innerHTML = html;
+    document.getElementById('weightBanner').classList.remove('weight-chip-empty');
   } else {
-    banner.innerHTML = '<span class="weight-banner-prompt">体重を記録 ✏️</span>';
+    banner.innerHTML = '<span class="weight-chip-val">--.-<small style="font-size:8px;font-weight:600;color:#ccc;margin-left:1px">kg</small></span><div class="weight-chip-label">⚖️ 体重を記録</div>';
+    document.getElementById('weightBanner').classList.add('weight-chip-empty');
   }
 }
 
@@ -2507,7 +2533,7 @@ function showWeightPopup() {
   var card = document.getElementById('weightCard');
   var todayW = getWeight(currentDate);
   var prevW = getPrevWeight();
-  var initVal = todayW || prevW || 60;
+  var initVal = todayW || prevW || getProfileWeight() || 60;
   weightSliderVal = initVal;
 
   var rangeMin = (initVal - 2).toFixed(1);
@@ -2534,18 +2560,23 @@ function showWeightPopup() {
   // Save button
   html += '<button class="weight-save-btn" onclick="saveWeightFromPopup()">💪 記録する</button>';
 
-  // Recent history
-  var history = getWeightHistory(5);
-  var hasHistory = history.some(function(h){ return h.weight !== null; });
-  if (hasHistory) {
-    html += '<div class="weight-history">';
-    html += '<div style="font-weight:800;margin-bottom:4px">直近の記録</div>';
-    history.forEach(function(h){
-      if (h.weight === null) return;
-      var label = (h.date.getMonth()+1)+'/'+h.date.getDate();
-      html += '<div class="weight-history-item"><span>'+label+'</span><span>'+h.weight.toFixed(1)+' kg</span></div>';
-    });
-    html += '</div>';
+  // Weight graph (if enough data) or recent history
+  var graphHtml = renderWeightGraph(14);
+  if (graphHtml) {
+    html += graphHtml;
+  } else {
+    var history = getWeightHistory(5);
+    var hasHistory = history.some(function(h){ return h.weight !== null; });
+    if (hasHistory) {
+      html += '<div class="weight-history">';
+      html += '<div style="font-weight:800;margin-bottom:4px">直近の記録</div>';
+      history.forEach(function(h){
+        if (h.weight === null) return;
+        var label = (h.date.getMonth()+1)+'/'+h.date.getDate();
+        html += '<div class="weight-history-item"><span>'+label+'</span><span>'+h.weight.toFixed(1)+' kg</span></div>';
+      });
+      html += '</div>';
+    }
   }
 
   card.innerHTML = html;
@@ -2975,11 +3006,12 @@ function renderWeightGraph(days) {
   // Gradient fill under line
   var firstPt = points[0].split(',');
   var lastPt = points[points.length - 1].split(',');
-  html += '<defs><linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">';
+  var gradId = 'wGrad'+days;
+  html += '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">';
   html += '<stop offset="0%" stop-color="#43a047" stop-opacity="0.2"/>';
   html += '<stop offset="100%" stop-color="#43a047" stop-opacity="0.02"/>';
   html += '</linearGradient></defs>';
-  html += '<polygon points="'+firstPt[0]+','+(padT+plotH)+' '+points.join(' ')+' '+lastPt[0]+','+(padT+plotH)+'" fill="url(#wGrad)"/>';
+  html += '<polygon points="'+firstPt[0]+','+(padT+plotH)+' '+points.join(' ')+' '+lastPt[0]+','+(padT+plotH)+'" fill="url(#'+gradId+')"/>';
 
   // Line
   html += '<polyline points="'+points.join(' ')+'" fill="none" stroke="#43a047" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -3047,6 +3079,11 @@ function showSettings() {
     if (saved.goal) document.getElementById('setGoal').value = saved.goal;
   }
   document.getElementById('calcResult').innerHTML = '';
+  // Show welcome message if first time (no targets saved)
+  var welcomeEl = document.getElementById('settingsWelcome');
+  if (welcomeEl) {
+    welcomeEl.style.display = localStorage.getItem('diet_targets') ? 'none' : 'block';
+  }
   document.getElementById('settingsOverlay').classList.add('show');
 }
 
@@ -3258,6 +3295,18 @@ function importData(file) {
   document.getElementById('importFileInput').value = '';
 }
 
+function resetAllData() {
+  if (!confirm('⚠️ すべてのデータを削除して初期状態に戻します。\nこの操作は元に戻せません。\n\nよろしいですか？')) return;
+  if (!confirm('本当に全データを削除しますか？')) return;
+  var keys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (key.indexOf('diet_') === 0) keys.push(key);
+  }
+  keys.forEach(function(k){ localStorage.removeItem(k); });
+  location.reload();
+}
+
 // ============================================================
 // Search
 // ============================================================
@@ -3322,7 +3371,6 @@ function showSearchResults(results, query) {
   if (results.length === 0) {
     var q = encodeURIComponent(query);
     var googleQ = encodeURIComponent(query + ' カロリー たんぱく質 脂質 炭水化物');
-    var slismQ = encodeURIComponent(query);
     html = '<div class="search-no-result">' +
       '<div class="search-no-result-msg">「'+query+'」に一致する食品がありません</div>' +
       '</div>' +
@@ -3330,11 +3378,6 @@ function showSearchResults(results, query) {
         '<a class="search-ext-link" href="https://www.google.com/search?q='+googleQ+'" target="_blank" rel="noopener">' +
           '<span class="ext-icon">🔍</span>' +
           '<span class="ext-label">Googleで栄養成分を調べる<small>カロリー・PFCを検索</small></span>' +
-          '<span class="ext-arrow">›</span>' +
-        '</a>' +
-        '<a class="search-ext-link" href="https://calorie.slism.jp/search/?q='+slismQ+'" target="_blank" rel="noopener">' +
-          '<span class="ext-icon">📊</span>' +
-          '<span class="ext-label">カロリーSlismで調べる<small>食品データベースで検索</small></span>' +
           '<span class="ext-arrow">›</span>' +
         '</a>' +
       '</div>' +
@@ -3449,6 +3492,10 @@ function init() {
     loadCurrentDay();
     createBubbles();
     animLoop();
+    // First-time: show settings
+    if (!localStorage.getItem('diet_targets')) {
+      setTimeout(function(){ showSettings(); }, 600);
+    }
   }).catch(function(err) {
     console.error('CSV load failed:', err);
     // Fallback — init with empty foods
