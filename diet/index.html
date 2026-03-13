@@ -863,7 +863,7 @@ body{
         <div class="kcal-display">
           <span class="kcal-num" id="kcalNum">0</span>
           <span class="kcal-unit">kcal</span>
-          <div class="kcal-sub">/ <span id="kcalTarget">1,800</span></div>
+          <div class="kcal-sub" id="kcalRemaining">残り 1,800 kcal</div>
         </div>
       </div>
     </div>
@@ -2025,6 +2025,15 @@ function updateStatsImmediate() {
   document.getElementById('kcalNum').textContent = t.kcal.toLocaleString();
   var numEl = document.getElementById('kcalNum');
   numEl.className = 'kcal-num'+(ratio>1?' danger':ratio>0.8?' warn':'');
+  var remaining = KCAL_TARGET - t.kcal;
+  var remEl = document.getElementById('kcalRemaining');
+  if(remaining >= 0){
+    remEl.textContent = '残り ' + remaining.toLocaleString() + ' kcal';
+    remEl.style.color = '#bbb';
+  } else {
+    remEl.textContent = Math.abs(remaining).toLocaleString() + ' kcal オーバー';
+    remEl.style.color = '#d32f2f';
+  }
 
   ['p','f','c'].forEach(function(k){
     var val = t[k];
@@ -3234,7 +3243,7 @@ function applyTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax) {
   }));
 
   // Update display
-  document.getElementById('kcalTarget').textContent = kcal.toLocaleString();
+  updateStatsImmediate();
   initZones();
   updateStatsImmediate();
 
@@ -3258,7 +3267,7 @@ function loadSavedTargets() {
       PFC_TARGETS.p = saved.p;
       PFC_TARGETS.f = saved.f;
       PFC_TARGETS.c = saved.c;
-      document.getElementById('kcalTarget').textContent = KCAL_TARGET.toLocaleString();
+      updateStatsImmediate();
     }
   } catch(e) {}
 }
