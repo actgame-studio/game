@@ -2539,7 +2539,7 @@ function showWeightPopup() {
   var rangeMin = (initVal - 2).toFixed(1);
   var rangeMax = (parseFloat(initVal) + 2).toFixed(1);
 
-  var html = '<div class="weight-title">⚖️ きょうの体重</div>';
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="weight-title" style="margin:0">⚖️ きょうの体重</div><button onclick="hideWeightPopup()" style="width:28px;height:28px;border:none;border-radius:50%;background:rgba(0,0,0,0.06);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit">✕</button></div>';
   html += '<div class="weight-display" id="weightDisplayVal">'+initVal.toFixed(1)+'<span>kg</span></div>';
   html += '<div class="weight-diff" id="weightDiffText"></div>';
 
@@ -3166,6 +3166,11 @@ function calcTargets() {
   html += '</div>';
 
   document.getElementById('calcResult').innerHTML = html;
+  // Scroll to show the result and apply button
+  setTimeout(function(){
+    var el = document.getElementById('calcResult');
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
 }
 
 function applyCalcTargets(kcal, pMin, pMax, fMin, fMax, cMin, cMax) {
