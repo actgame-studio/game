@@ -1385,7 +1385,7 @@ function getDynamicFavorites(maxItems, csvFavIds) {
   var usage = {};
   try { usage = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) {}
   var keys = Object.keys(usage);
-  if (keys.length === 0) return null; // no usage data — use CSV fav
+  if (keys.length === 0) return []; // no usage data — show nothing
 
   var now = Date.now();
   var HALF_LIFE = 30 * 86400000; // 30 days
@@ -1408,18 +1408,6 @@ function getDynamicFavorites(maxItems, csvFavIds) {
 
   scored.sort(function(a,b) { return b.score - a.score; });
   var result = scored.slice(0, maxItems).map(function(s) { return s.idx; });
-
-  // Merge with CSV favorites: fill remaining slots with CSV defaults
-  if (csvFavIds && result.length < maxItems) {
-    var inResult = {};
-    result.forEach(function(id) { inResult[id] = true; });
-    for (var i = 0; i < csvFavIds.length && result.length < maxItems; i++) {
-      if (!inResult[csvFavIds[i]]) {
-        result.push(csvFavIds[i]);
-        inResult[csvFavIds[i]] = true;
-      }
-    }
-  }
 
   return result;
 }
@@ -1915,7 +1903,7 @@ function popBubble(e, el, food, idx) {
   setTimeout(function(){
     el.classList.remove('popping');
     el.classList.add('reappear');
-  }, 1000);
+  }, 300);
 
   var toast = document.createElement('div');
   toast.className = 'kcal-toast';
