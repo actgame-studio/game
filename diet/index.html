@@ -2386,7 +2386,7 @@ function renderPFCContent(key) {
 function renderKcalTab(content) {
   var KCAL_COLOR = '#1e88e5';
   var t = recalcTotals();
-  var tgt = parseInt(localStorage.getItem('diet_kcal_target')) || 1800;
+  var tgt = KCAL_TARGET || 1800;
   var remaining = tgt - t.kcal;
   var pct = Math.min(t.kcal / tgt * 100, 100);
   var statusText, statusColor;
