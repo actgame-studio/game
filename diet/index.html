@@ -3158,16 +3158,16 @@ function calcTargets() {
   // PFC calculation (筋肉維持型ダイエット)
   var pGrams = Math.round(weight * 1.8); // 体重×1.8g
   var pKcal = pGrams * 4;
-  var fKcal = Math.round(targetKcal * 0.20); // 総カロリーの20%
+  var fKcal = Math.round(targetKcal * 0.25); // 総カロリーの25%
   var fGrams = Math.round(fKcal / 9);
   var cKcal = Math.max(0, targetKcal - pKcal - fKcal);
   var cGrams = Math.round(cKcal / 4);
 
-  // Min/max ranges (±15%)
+  // Min/max ranges
   var pMin = Math.round(pGrams * 0.85);
   var pMax = Math.round(pGrams * 1.15);
-  var fMin = Math.round(fGrams * 0.8);
-  var fMax = Math.round(fGrams * 1.2);
+  var fMin = Math.round(fGrams * 0.75);
+  var fMax = Math.round(fGrams * 1.25);
   var cMin = Math.round(cGrams * 0.85);
   var cMax = Math.round(cGrams * 1.15);
 
