@@ -49,7 +49,7 @@ body{
 
 /* Kcal */
 .kcal-display{text-align:right}
-.kcal-num{font-size:20px;font-weight:900;line-height:1;color:#43a047;transition:color .3s}
+.kcal-num{font-size:20px;font-weight:900;line-height:1;color:#1e88e5;transition:color .3s}
 .kcal-num.warn{color:#ef6c00}
 .kcal-num.danger{color:#d32f2f}
 .kcal-unit{font-size:10px;font-weight:600;color:#888;margin-left:-2px}
@@ -284,13 +284,38 @@ body{
 }
 .pfc-overlay.show{opacity:1;pointer-events:auto}
 .pfc-popup{
-  background:#fff;border-radius:20px 20px 0 0;padding:16px 16px 24px;
-  width:100%;max-width:420px;max-height:60vh;
+  background:#fff;border-radius:20px 20px 0 0;padding:0 0 24px;
+  width:100%;max-width:420px;max-height:70vh;
   box-shadow:0 -10px 40px rgba(0,0,0,0.15);
   transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:flex;flex-direction:column;
 }
 .pfc-overlay.show .pfc-popup{transform:translateY(0)}
+.pfc-tab-bar{
+  display:flex;border-bottom:2px solid #eee;padding:0 36px 0 0;flex-shrink:0;
+  position:relative;
+}
+.pfc-tab{
+  flex:1;padding:12px 0 10px;text-align:center;font-size:11px;font-weight:700;
+  color:#bbb;cursor:pointer;border:none;background:none;transition:color .2s;
+  position:relative;white-space:nowrap;
+}
+.pfc-tab.active{color:#37474f}
+.pfc-tab::after{
+  content:'';position:absolute;bottom:-2px;left:10%;right:10%;height:3px;
+  border-radius:2px;background:transparent;transition:background .2s;
+}
+.pfc-tab.active::after{background:var(--tab-color,#43a047)}
+.pfc-tab-close{
+  position:absolute;right:8px;top:8px;
+  width:28px;height:28px;border:none;border-radius:50%;
+  background:rgba(0,0,0,0.06);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;z-index:1;
+}
+.pfc-tab-close:active{background:rgba(0,0,0,0.12)}
+.pfc-popup-content{
+  overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;flex:1;
+}
 .pfc-popup-header{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;
@@ -914,7 +939,7 @@ body{
         <button class="date-arrow" onclick="changeDate(1)">▶</button>
       </div>
       <div class="top-row-right">
-        <div class="kcal-display">
+        <div class="kcal-display" onclick="showPFCBreakdown('kcal')" style="cursor:pointer">
           <span class="kcal-num" id="kcalNum">0</span>
           <span class="kcal-unit">kcal</span>
           <div class="kcal-sub" id="kcalRemaining">残り 1,800 kcal</div>
@@ -1011,7 +1036,16 @@ body{
 
 <!-- ==================== PFC BREAKDOWN POPUP ==================== -->
 <div class="pfc-overlay" id="pfcOverlay" onclick="if(event.target===this)hidePFCBreakdown()">
-  <div class="pfc-popup" id="pfcPopup"></div>
+  <div class="pfc-popup" id="pfcPopup">
+    <div class="pfc-tab-bar" id="pfcTabBar">
+      <button class="pfc-tab" style="--tab-color:#e91e63" onclick="switchPFCTab('p')">P たんぱく</button>
+      <button class="pfc-tab" style="--tab-color:#ff9800" onclick="switchPFCTab('f')">F 脂質</button>
+      <button class="pfc-tab" style="--tab-color:#4caf50" onclick="switchPFCTab('c')">C 炭水化物</button>
+      <button class="pfc-tab" style="--tab-color:#1e88e5" onclick="switchPFCTab('kcal')">カロリー</button>
+      <button class="pfc-tab-close" onclick="hidePFCBreakdown()">✕</button>
+    </div>
+    <div class="pfc-popup-content" id="pfcPopupContent"></div>
+  </div>
 </div>
 
 <!-- ==================== FOOD DETAIL POPUP (long-press) ==================== -->
@@ -2250,20 +2284,48 @@ function deleteRecord(pos) {
 // ============================================================
 // PFC Breakdown Popup
 // ============================================================
+var currentPFCTab = 'p';
+
 function showPFCBreakdown(key) {
   SE.tick();
+  currentPFCTab = key;
   var overlay = document.getElementById('pfcOverlay');
-  var popup = document.getElementById('pfcPopup');
+  // Update tab highlights
+  document.querySelectorAll('.pfc-tab').forEach(function(tab){
+    tab.classList.remove('active');
+  });
+  var tabMap = {p:0, f:1, c:2, kcal:3};
+  var tabs = document.querySelectorAll('.pfc-tab');
+  if (tabs[tabMap[key]]) tabs[tabMap[key]].classList.add('active');
+
+  renderPFCContent(key);
+  overlay.classList.add('show');
+}
+
+function switchPFCTab(key) {
+  SE.tick();
+  currentPFCTab = key;
+  document.querySelectorAll('.pfc-tab').forEach(function(tab){ tab.classList.remove('active'); });
+  var tabMap = {p:0, f:1, c:2, kcal:3};
+  var tabs = document.querySelectorAll('.pfc-tab');
+  if (tabs[tabMap[key]]) tabs[tabMap[key]].classList.add('active');
+  renderPFCContent(key);
+}
+
+function renderPFCContent(key) {
+  var content = document.getElementById('pfcPopupContent');
+  if (key === 'kcal') {
+    renderKcalTab(content);
+    return;
+  }
   var t = recalcTotals();
   var tgt = PFC_TARGETS[key];
   var val = t[key];
   var color = PFC_COLORS[key].main;
   var name = PFC_NAMES[key];
   var checkMin = (key === 'f') ? (tgt.safeMin || Math.round(tgt.min * 0.6)) : tgt.min;
-  var inZone = val >= checkMin && val <= tgt.max;
   var statusText, statusColor;
   if (key === 'f') {
-    // Fat: 3 zones — below safeMin (不足), safeMin~min (控えめ ✓), min~max (適正 ✓), over max (オーバー)
     if (val < checkMin) { statusText = '不足'; statusColor = '#90a4ae'; }
     else if (val < tgt.min) { statusText = '控えめ ✓'; statusColor = '#42a5f5'; }
     else if (val <= tgt.max) { statusText = '適正 ✓'; statusColor = '#43a047'; }
@@ -2273,7 +2335,6 @@ function showPFCBreakdown(key) {
     statusColor = val < tgt.min ? '#90a4ae' : val > tgt.max ? '#ef6c00' : '#43a047';
   }
 
-  // Build food contributions
   var contributions = {};
   dayRecords.forEach(function(r){
     var rec = getRec(r);
@@ -2287,17 +2348,10 @@ function showPFCBreakdown(key) {
     contributions[rec.idx].total += val_contrib;
   });
 
-  // Sort by total contribution descending
   var sorted = Object.values(contributions).sort(function(a,b){ return b.total - a.total; });
   var maxContrib = sorted.length ? sorted[0].total : 1;
 
   var html = '';
-  html += '<div class="pfc-popup-header">';
-  html += '<div class="pfc-popup-title" style="color:'+color+'">'+name+'</div>';
-  html += '<button class="pfc-popup-close" onclick="hidePFCBreakdown()">✕</button>';
-  html += '</div>';
-
-  // Summary bar
   var pct = Math.min(val / tgt.max * 100, 100);
   html += '<div class="pfc-popup-summary">';
   html += '<div><div class="pfc-summary-num" style="color:'+color+'">'+Math.round(val)+'<span style="font-size:12px;font-weight:600">g</span></div>';
@@ -2326,8 +2380,79 @@ function showPFCBreakdown(key) {
     });
   }
 
-  popup.innerHTML = html;
-  overlay.classList.add('show');
+  content.innerHTML = html;
+}
+
+function renderKcalTab(content) {
+  var KCAL_COLOR = '#1e88e5';
+  var t = recalcTotals();
+  var tgt = parseInt(localStorage.getItem('diet_kcal_target')) || 1800;
+  var remaining = tgt - t.kcal;
+  var pct = Math.min(t.kcal / tgt * 100, 100);
+  var statusText, statusColor;
+  if (remaining > 0) { statusText = '残り '+remaining+' kcal'; statusColor = KCAL_COLOR; }
+  else if (remaining > -200) { statusText = Math.abs(remaining)+' kcal オーバー'; statusColor = '#ef6c00'; }
+  else { statusText = Math.abs(remaining)+' kcal オーバー'; statusColor = '#d32f2f'; }
+
+  var html = '';
+  html += '<div class="pfc-popup-summary">';
+  html += '<div><div class="pfc-summary-num" style="color:'+statusColor+'">'+Math.round(t.kcal)+'<span style="font-size:12px;font-weight:600"> kcal</span></div>';
+  html += '<div class="pfc-summary-target">目標 '+tgt+' kcal　<span style="color:'+statusColor+';font-weight:800">'+statusText+'</span></div></div>';
+  html += '<div class="pfc-summary-bar"><div class="pfc-summary-bar-fill" style="width:'+pct+'%;background:'+statusColor+'"></div></div>';
+  html += '</div>';
+
+  if (!dayRecords.length) {
+    html += '<div style="text-align:center;padding:24px;color:#ccc;font-size:12px">まだ何も記録していません</div>';
+    content.innerHTML = html;
+    return;
+  }
+
+  // Find max kcal for bar scaling
+  var maxKcal = 0;
+  dayRecords.forEach(function(r) {
+    var rec = getRec(r);
+    var food = FOODS[rec.idx];
+    if (!food) return;
+    var kcal = Math.round(food.kcal * (rec.qty || 1));
+    if (kcal > maxKcal) maxKcal = kcal;
+  });
+
+  html += '<div style="font-size:10px;color:#b0bec5;font-weight:600;margin-bottom:6px">きょうの記録（登録順）</div>';
+  dayRecords.forEach(function(r, pos) {
+    var rec = getRec(r);
+    var food = FOODS[rec.idx];
+    if (!food) return;
+    var qty = rec.qty || 1;
+    var kcal = Math.round(food.kcal * qty);
+    var barPct = maxKcal > 0 ? Math.min(kcal / maxKcal * 100, 100) : 0;
+    var countLabel = qty !== 1 ? ' ×'+qty : '';
+
+    html += '<div class="pfc-item">';
+    html += '<div class="pfc-item-emoji">'+food.emoji+'</div>';
+    html += '<div class="pfc-item-info">';
+    html += '<div class="pfc-item-name">'+food.name+countLabel+'</div>';
+    html += '<div class="pfc-item-detail">P'+Math.round(food.p*qty*10)/10+' F'+Math.round(food.f*qty*10)/10+' C'+Math.round(food.c*qty*10)/10+'</div>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">';
+    html += '<div class="pfc-item-val" style="color:'+KCAL_COLOR+'">'+kcal+'</div>';
+    html += '<div class="pfc-item-bar"><div class="pfc-item-bar-fill" style="width:'+barPct+'%;background:'+KCAL_COLOR+'"></div></div>';
+    html += '</div>';
+    html += '<button onclick="deleteRecordFromTab('+pos+')" style="border:none;background:none;font-size:14px;cursor:pointer;padding:2px 4px;opacity:0.35;flex-shrink:0">🗑</button>';
+    html += '</div>';
+  });
+
+  content.innerHTML = html;
+}
+
+function deleteRecordFromTab(pos) {
+  if (pos < 0 || pos >= dayRecords.length) return;
+  SE.undo();
+  if (navigator.vibrate) navigator.vibrate(15);
+  dayRecords.splice(pos, 1);
+  saveDay(currentDate, dayRecords);
+  updateStatsImmediate();
+  rebuildHistory();
+  renderPFCContent('kcal');
 }
 
 function hidePFCBreakdown() {
@@ -2366,6 +2491,11 @@ function showFoodDetail(foodIdx) {
 
   // Add button
   html += '<button class="food-detail-add" onclick="addFromDetail('+foodIdx+')">＋ 記録する</button>';
+
+  // Edit button for custom foods
+  if (food.custom) {
+    html += '<button class="food-detail-add" onclick="editCustomFood('+foodIdx+')" style="background:#78909c;margin-top:6px">✏️ 編集する</button>';
+  }
 
   card.innerHTML = html;
   updateDetailValues(food, 1);
@@ -2521,6 +2651,47 @@ function showCustomFoodForm(prefillName) {
 
 function hideCustomFoodForm() {
   document.getElementById('customFoodOverlay').classList.remove('show');
+  editingCustomFoodIdx = -1;
+}
+
+var editingCustomFoodIdx = -1;
+
+function editCustomFood(foodIdx) {
+  hideFoodDetail();
+  SE.tick();
+  var food = FOODS[foodIdx];
+  editingCustomFoodIdx = foodIdx;
+  selectedCustomEmoji = food.emoji;
+
+  var card = document.getElementById('customFoodCard');
+  var html = '<div class="custom-food-title">✏️ カスタム食品を編集</div>';
+
+  html += '<div class="custom-food-emoji-row">';
+  CUSTOM_EMOJIS.forEach(function(e){
+    html += '<button class="custom-food-emoji-btn'+(e===food.emoji?' active':'')+'" onclick="pickCustomEmoji(\''+e+'\',this)">'+e+'</button>';
+  });
+  html += '</div>';
+
+  html += '<div class="custom-food-field"><label>食品名</label>';
+  html += '<input type="text" id="cfName" value="'+food.name+'"></div>';
+  html += '<div class="custom-food-field"><label>量（1回分の目安）</label>';
+  html += '<input type="text" id="cfUnit" value="'+food.unit+'"></div>';
+  html += '<div class="custom-food-field"><label>カロリー (kcal)</label>';
+  html += '<input type="number" id="cfKcal" value="'+food.kcal+'" inputmode="decimal"></div>';
+  html += '<div class="custom-food-pfc-row">';
+  html += '<div class="custom-food-field"><label style="color:#e91e63">P たんぱく質 (g)</label>';
+  html += '<input type="number" id="cfP" value="'+food.p+'" inputmode="decimal"></div>';
+  html += '<div class="custom-food-field"><label style="color:#ff9800">F 脂質 (g)</label>';
+  html += '<input type="number" id="cfF" value="'+food.f+'" inputmode="decimal"></div>';
+  html += '<div class="custom-food-field"><label style="color:#4caf50">C 炭水化物 (g)</label>';
+  html += '<input type="number" id="cfC" value="'+food.c+'" inputmode="decimal"></div>';
+  html += '</div>';
+
+  html += '<button class="custom-food-save" onclick="saveCustomFood()">✓ 保存する</button>';
+  html += '<button class="custom-food-cancel" onclick="hideCustomFoodForm()">キャンセル</button>';
+
+  card.innerHTML = html;
+  document.getElementById('customFoodOverlay').classList.add('show');
 }
 
 function pickCustomEmoji(emoji, btn) {
@@ -2551,7 +2722,7 @@ function saveCustomFood() {
 
   SE.achieve();
 
-  var food = {
+  var foodData = {
     emoji: selectedCustomEmoji,
     name: name,
     unit: unit,
@@ -2563,15 +2734,37 @@ function saveCustomFood() {
     custom: true
   };
 
-  // Add to FOODS array
-  var newIdx = FOODS.length;
-  FOODS.push(food);
+  // Edit mode: update existing food
+  if (editingCustomFoodIdx >= 0) {
+    FOODS[editingCustomFoodIdx] = foodData;
 
-  // Update CATEGORIES
+    // Update localStorage
+    var customs = JSON.parse(localStorage.getItem('diet_custom_foods') || '[]');
+    // Find matching custom food by scanning
+    var customCat = CATEGORIES.find(function(c){ return c.id === 'カスタム'; });
+    if (customCat) {
+      var posInCustom = customCat.ids.indexOf(editingCustomFoodIdx);
+      if (posInCustom >= 0 && posInCustom < customs.length) {
+        customs[posInCustom] = foodData;
+      }
+    }
+    localStorage.setItem('diet_custom_foods', JSON.stringify(customs));
+
+    hideCustomFoodForm();
+    updateStatsImmediate();
+    rebuildHistory();
+    createBubbles();
+    editingCustomFoodIdx = -1;
+    return;
+  }
+
+  // New mode: add new food
+  var newIdx = FOODS.length;
+  FOODS.push(foodData);
+
   var customCat = CATEGORIES.find(function(c){ return c.id === 'カスタム'; });
   if (!customCat) {
     customCat = { id:'カスタム', label:'🧪 カスタム', ids:[] };
-    // Insert before 'all'
     var allIdx = CATEGORIES.findIndex(function(c){ return c.id === 'all'; });
     if (allIdx >= 0) CATEGORIES.splice(allIdx, 0, customCat);
     else CATEGORIES.push(customCat);
@@ -2579,20 +2772,18 @@ function saveCustomFood() {
   }
   customCat.ids.push(newIdx);
 
-  // Save to localStorage
   var customs = JSON.parse(localStorage.getItem('diet_custom_foods') || '[]');
-  customs.push(food);
+  customs.push(foodData);
   localStorage.setItem('diet_custom_foods', JSON.stringify(customs));
 
   hideCustomFoodForm();
   hideSearchResults();
 
-  // Record the food immediately
   dayRecords.push({idx: newIdx, qty: 1});
   saveDay(currentDate, dayRecords);
   recordUsage(newIdx);
   updateStatsImmediate();
-  addHistoryChip(food, dayRecords.length - 1, 1);
+  addHistoryChip(foodData, dayRecords.length - 1, 1);
 
   // Show toast
   var toast = document.createElement('div');
