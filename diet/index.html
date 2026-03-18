@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>ぷちレコ - かんたんレコーディングダイエット</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ぷちレコ">
+<link rel="apple-touch-icon" href="logo_onboarding.png">
+<meta name="theme-color" content="#43a047">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -194,6 +200,15 @@ body{
 
 /* ===== Canvas ===== */
 #mainCanvas{position:fixed;top:0;left:0;z-index:10;pointer-events:none}
+
+/* ===== Meal Type Selector ===== */
+.meal-type-bar{position:absolute;bottom:52px;left:0;right:0;z-index:25;display:flex;justify-content:center;gap:6px;padding:4px 12px;pointer-events:none}
+.meal-type-btn{pointer-events:auto;display:flex;align-items:center;gap:3px;padding:5px 10px;border-radius:20px;border:1.5px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:11px;font-weight:700;color:#78909c;cursor:pointer;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.meal-type-btn.active-morning{border-color:#ff9800;background:rgba(255,152,0,0.12);color:#e65100}
+.meal-type-btn.active-lunch{border-color:#4caf50;background:rgba(76,175,80,0.12);color:#2e7d32}
+.meal-type-btn.active-dinner{border-color:#5c6bc0;background:rgba(92,107,192,0.12);color:#283593}
+.meal-type-btn.active-snack{border-color:#ec407a;background:rgba(236,64,122,0.12);color:#c2185b}
+.bubble-layer-bg{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;border-radius:0;transition:background .4s;pointer-events:none}
 
 /* ===== Bubbles ===== */
 .bubble-layer{position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;overflow:hidden}
@@ -989,8 +1004,19 @@ body{
   <!-- Canvas -->
   <canvas id="mainCanvas"></canvas>
 
+  <!-- Bubble background tint -->
+  <div class="bubble-layer-bg" id="bubbleBg"></div>
+
   <!-- Bubble layer -->
   <div class="bubble-layer" id="bubbleLayer"></div>
+
+  <!-- Meal type selector -->
+  <div class="meal-type-bar" id="mealTypeBar">
+    <button class="meal-type-btn active-morning" id="mealBtn_morning" onclick="setMealType('morning')">🌅 朝</button>
+    <button class="meal-type-btn" id="mealBtn_lunch" onclick="setMealType('lunch')">☀️ 昼</button>
+    <button class="meal-type-btn" id="mealBtn_dinner" onclick="setMealType('dinner')">🌙 夜</button>
+    <button class="meal-type-btn" id="mealBtn_snack" onclick="setMealType('snack')">🍪 おやつ</button>
+  </div>
 
   <!-- Swipe hints -->
   <div class="swipe-hint left" id="swipeL">◀</div>
@@ -1543,6 +1569,38 @@ function saveDay(d, list) {
 var dayRecords = [];
 var W, H;
 
+// ============================================================
+// Meal type management
+// ============================================================
+var currentMealType = 'morning';
+var MEAL_TYPES = {
+  morning: {label:'朝', emoji:'🌅', color:'#0288d1', bg:'linear-gradient(180deg, rgba(129,212,250,0.7) 0%, rgba(3,169,244,0.35) 100%)'},
+  lunch:   {label:'昼', emoji:'☀️', color:'#e65100', bg:'linear-gradient(180deg, rgba(255,183,77,0.75) 0%, rgba(255,138,0,0.4) 100%)'},
+  dinner:  {label:'夜', emoji:'🌙', color:'#1a237e', bg:'linear-gradient(180deg, rgba(63,81,181,0.5) 0%, rgba(26,35,126,0.45) 100%)'},
+  snack:   {label:'おやつ', emoji:'🍪', color:'#c2185b', bg:'linear-gradient(180deg, rgba(244,143,177,0.65) 0%, rgba(233,30,99,0.3) 100%)'}
+};
+
+function setMealType(type) {
+  currentMealType = type;
+  // Update button states
+  ['morning','lunch','dinner','snack'].forEach(function(t) {
+    var btn = document.getElementById('mealBtn_'+t);
+    btn.className = 'meal-type-btn' + (t === type ? ' active-'+t : '');
+  });
+  // Update background tint
+  var bg = document.getElementById('bubbleBg');
+  bg.style.background = MEAL_TYPES[type].bg;
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+
+function autoSelectMealType() {
+  var h = new Date().getHours();
+  if (h < 10) setMealType('morning');
+  else if (h < 15) setMealType('lunch');
+  else if (h < 20) setMealType('dinner');
+  else setMealType('snack');
+}
+
 // Record format helper (backward compat: plain number → {idx,qty:1})
 function getRec(r) {
   if (typeof r === 'number') return {idx:r, qty:1};
@@ -2008,7 +2066,7 @@ function popBubble(e, el, food, idx) {
 
   spawnPFCParticles(cx, cy, food);
 
-  dayRecords.push({idx:idx, qty:1});
+  dayRecords.push({idx:idx, qty:1, meal:currentMealType});
   saveDay(currentDate, dayRecords);
   recordUsage(idx);
 
@@ -2417,28 +2475,54 @@ function renderKcalTab(content) {
     if (kcal > maxKcal) maxKcal = kcal;
   });
 
-  html += '<div style="font-size:10px;color:#b0bec5;font-weight:600;margin-bottom:6px">きょうの記録（登録順）</div>';
+  // Group by meal type
+  var mealOrder = ['morning','lunch','dinner','snack'];
+  var grouped = {};
+  mealOrder.forEach(function(m){ grouped[m] = []; });
+  var noMeal = [];
   dayRecords.forEach(function(r, pos) {
     var rec = getRec(r);
-    var food = FOODS[rec.idx];
-    if (!food) return;
-    var qty = rec.qty || 1;
-    var kcal = Math.round(food.kcal * qty);
-    var barPct = maxKcal > 0 ? Math.min(kcal / maxKcal * 100, 100) : 0;
-    var countLabel = qty !== 1 ? ' ×'+qty : '';
+    var meal = rec.meal || 'morning';
+    if (!grouped[meal]) grouped[meal] = [];
+    grouped[meal].push({rec:rec, pos:pos});
+  });
 
-    html += '<div class="pfc-item">';
-    html += '<div class="pfc-item-emoji">'+food.emoji+'</div>';
-    html += '<div class="pfc-item-info">';
-    html += '<div class="pfc-item-name">'+food.name+countLabel+'</div>';
-    html += '<div class="pfc-item-detail">P'+Math.round(food.p*qty*10)/10+' F'+Math.round(food.f*qty*10)/10+' C'+Math.round(food.c*qty*10)/10+'</div>';
+  mealOrder.forEach(function(mealKey) {
+    var items = grouped[mealKey];
+    if (!items || !items.length) return;
+    var mt = MEAL_TYPES[mealKey];
+    var mealKcal = 0;
+    items.forEach(function(item) {
+      var food = FOODS[item.rec.idx];
+      if (food) mealKcal += Math.round(food.kcal * (item.rec.qty || 1));
+    });
+    html += '<div style="display:flex;align-items:center;gap:6px;margin:10px 0 4px;padding-bottom:3px;border-bottom:1.5px solid '+mt.color+'22">';
+    html += '<span style="font-size:13px">'+mt.emoji+'</span>';
+    html += '<span style="font-size:11px;font-weight:800;color:'+mt.color+'">'+mt.label+'</span>';
+    html += '<span style="font-size:10px;color:#b0bec5;margin-left:auto;font-weight:600">'+mealKcal+' kcal</span>';
     html += '</div>';
-    html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">';
-    html += '<div class="pfc-item-val" style="color:'+KCAL_COLOR+'">'+kcal+'</div>';
-    html += '<div class="pfc-item-bar"><div class="pfc-item-bar-fill" style="width:'+barPct+'%;background:'+KCAL_COLOR+'"></div></div>';
-    html += '</div>';
-    html += '<button onclick="deleteRecordFromTab('+pos+')" style="border:none;background:none;font-size:14px;cursor:pointer;padding:2px 4px;opacity:0.35;flex-shrink:0">🗑</button>';
-    html += '</div>';
+
+    items.forEach(function(item) {
+      var food = FOODS[item.rec.idx];
+      if (!food) return;
+      var qty = item.rec.qty || 1;
+      var kcal = Math.round(food.kcal * qty);
+      var barPct = maxKcal > 0 ? Math.min(kcal / maxKcal * 100, 100) : 0;
+      var countLabel = qty !== 1 ? ' ×'+qty : '';
+
+      html += '<div class="pfc-item">';
+      html += '<div class="pfc-item-emoji">'+food.emoji+'</div>';
+      html += '<div class="pfc-item-info">';
+      html += '<div class="pfc-item-name">'+food.name+countLabel+'</div>';
+      html += '<div class="pfc-item-detail">P'+Math.round(food.p*qty*10)/10+' F'+Math.round(food.f*qty*10)/10+' C'+Math.round(food.c*qty*10)/10+'</div>';
+      html += '</div>';
+      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">';
+      html += '<div class="pfc-item-val" style="color:'+KCAL_COLOR+'">'+kcal+'</div>';
+      html += '<div class="pfc-item-bar"><div class="pfc-item-bar-fill" style="width:'+barPct+'%;background:'+KCAL_COLOR+'"></div></div>';
+      html += '</div>';
+      html += '<button onclick="deleteRecordFromTab('+item.pos+')" style="border:none;background:none;font-size:14px;cursor:pointer;padding:2px 4px;opacity:0.35;flex-shrink:0">🗑</button>';
+      html += '</div>';
+    });
   });
 
   content.innerHTML = html;
@@ -2579,7 +2663,7 @@ function addFromDetail(foodIdx) {
 
   spawnPFCParticles(W/2, H/3, food);
 
-  dayRecords.push({idx:foodIdx, qty:qty});
+  dayRecords.push({idx:foodIdx, qty:qty, meal:currentMealType});
   saveDay(currentDate, dayRecords);
   recordUsage(foodIdx);
 
@@ -2779,7 +2863,7 @@ function saveCustomFood() {
   hideCustomFoodForm();
   hideSearchResults();
 
-  dayRecords.push({idx: newIdx, qty: 1});
+  dayRecords.push({idx: newIdx, qty: 1, meal:currentMealType});
   saveDay(currentDate, dayRecords);
   recordUsage(newIdx);
   updateStatsImmediate();
@@ -3819,7 +3903,7 @@ function selectFoodFromSearch(idx) {
   // Spawn PFC particles from center
   spawnPFCParticles(W/2, H/3, food);
 
-  dayRecords.push({idx:idx, qty:1});
+  dayRecords.push({idx:idx, qty:1, meal:currentMealType});
   saveDay(currentDate, dayRecords);
   recordUsage(idx);
 
@@ -3853,6 +3937,7 @@ function init() {
   // Load foods from CSV, then build UI
   loadFoodsFromCSV().then(function() {
     loadCustomFoods();
+    autoSelectMealType();
     initTabs();
     initSwipe();
     initSearch();
@@ -3882,6 +3967,13 @@ window.addEventListener('resize', function(){
 });
 
 init();
+
+// Service Worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(function(err) {
+    console.log('SW registration failed:', err);
+  });
+}
 </script>
 </body>
 </html>
